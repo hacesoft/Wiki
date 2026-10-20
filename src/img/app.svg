@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="wiki"><defs>
+ <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#09bffd"/><stop offset="0.52" stop-color="#0877ed"/><stop offset="1" stop-color="#2722ca"/></linearGradient>
+ <linearGradient id="cream" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffefd7"/><stop offset="1" stop-color="#fff6e8"/></linearGradient>
+ <linearGradient id="ocean" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#00478c"/><stop offset="1" stop-color="#001a45"/></linearGradient>
+ <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#36c5fa"/><stop offset="1" stop-color="#006cf0"/></linearGradient>
+ <linearGradient id="field" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a1ebfb"/><stop offset="1" stop-color="#4eaf87"/></linearGradient>
+ <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffce30"/><stop offset="1" stop-color="#ff9007"/></linearGradient>
+ <linearGradient id="mint" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#19d2e5"/><stop offset="1" stop-color="#0065e0"/></linearGradient>
+ <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9ce751"/><stop offset="1" stop-color="#218b3f"/></linearGradient>
+ <filter id="shadow" x="-25%" y="-30%" width="160%" height="180%"><feGaussianBlur in="SourceAlpha" stdDeviation="2"/><feOffset dy="2"/><feComponentTransfer><feFuncA type="linear" slope="0.23"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ </defs><rect width="128" height="128" rx="25" fill="url(#blue)"/>
+<g filter="url(#shadow)"><path d="M14 43Q38 32 63 48Q86 32 114 43V98Q90 86 63 104Q37 87 14 98Z" fill="#17c7ff"/><path d="M17 38Q41 30 62 45V94Q38 81 17 91Z" fill="#f7f8ff"/><path d="M66 45Q89 30 111 38V91Q89 82 66 94Z" fill="#eaf3ff"/><path d="M63 47V100" stroke="#3a60e6" stroke-width="3" fill="none"/><g stroke="#aac5f9" stroke-width="3.3" stroke-linecap="round"><path d="M26 55q14-2 26 8M26 68q13-2 26 8M26 81q13-2 26 8M78 62q12-8 24-7M78 76q12-8 24-7M78 88q11-7 24-7"/></g></g>
+<path d="M66 58Q77 19 105 17Q106 53 73 68Q65 75 61 95Q61 71 66 58Z" fill="url(#leaf)" stroke="#218940" stroke-width="1"/><path d="M70 61Q82 41 100 24" fill="none" stroke="#c6f684" stroke-width="2"/></svg>

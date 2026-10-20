@@ -1,0 +1,45 @@
+# Local configuration, secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.secrets.*
+secrets/
+
+# Personal data, backups, database exports and archives
+HomeWiki/
+data/
+backups/
+backup/
+*.sqlite
+*.sqlite3
+*.sql
+*.sql.gz
+*.dump
+*.7z
+*.tar
+*.tar.gz
+*.zip
+
+# Logs and temporary artifacts
+*.log
+*.log.*
+tmp/
+temp/
+.cache/
+
+# IDE/editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Tool dependencies and build artifacts
+node_modules/
+vendor/
+dist/
+coverage/
