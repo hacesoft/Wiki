@@ -1,7 +1,5 @@
 # Home Wiki 1.0.0
 
-> **Vstupní archiv pro Publisher:** Tento ZIP má výslednou strukturu s jediným kořenovým adresářem aplikace. Neobsahuje NAS nástroje (`install.sh`, `uninstall.sh`, `build-release.sh`, `scripts/`). Návody, které je zmiňují, platí pro samostatný úplný zdrojový repozitář, nikoli pro tento archiv. Podepsaný `.tar.gz` pro App Store vytváří až Hacesoft Publisher.
-
 
 Home Wiki je Markdown Wiki pro **Nextcloud 35**. Stránky, obrázky a přílohy se ukládají jako soubory do Nextcloud Files vlastníka; databáze Nextcloudu obsahuje strom stránek, sdílení, štítky a další metadata.
 
@@ -16,18 +14,19 @@ Home Wiki je Markdown Wiki pro **Nextcloud 35**. Stránky, obrázky a přílohy 
 
 ## Instalace
 
-### Standardní ruční instalace z GitHubu
+### Instalace z tohoto zdrojového projektu
 
-Naklonujte repozitář přímo do `custom_apps` pod názvem **`hc_homewiki`**:
+Zdrojové soubory aplikace jsou v adresáři `src/`. Celý repozitář proto **nekopírujte přímo** do Nextcloud `custom_apps/`.
+
+Nejprve nainstalujte a povolte HC Shared App Core. Na podporovaném Synology NAS s Dockerem stáhněte repozitář mimo `custom_apps` a spusťte z jeho kořene:
 
 ```sh
-cd /var/www/html/custom_apps
-git clone https://github.com/hacesoft/Wiki.git hc_homewiki
-cd /var/www/html
-sudo -u www-data php occ app:enable hc_homewiki
+git clone https://github.com/hacesoft/Wiki.git
+cd Wiki
+sudo sh install.sh
 ```
 
-Soubory aplikace (`appinfo/`, `lib/`, `js/` atd.) jsou přímo **v kořeni repozitáře**, nikoliv v podadresáři `src/`. Lze také stáhnout ZIP se zdrojovými kódy, rozbalený adresář přejmenovat na `hc_homewiki`, vložit do `custom_apps/` a aplikaci povolit v Nextcloudu. Před aktualizací zálohujte Nextcloud. Podrobnosti: [Instalace a aktualizace](docs/cz/INSTALACE.md).
+Instalační skript nasazuje obsah `src/` pod ID `hc_homewiki` a zachovává data aplikace. Pro ostatní prostředí lze do `custom_apps/hc_homewiki/` umístit **pouze obsah `src/`**, nastavit správná oprávnění a zapnout aplikaci pomocí `occ app:enable hc_homewiki`. Před aktualizací zálohujte databázi i data. Podrobnosti: [Instalace a aktualizace](docs/cz/INSTALACE.md).
 
 ### Synology NAS / Docker
 
@@ -55,10 +54,11 @@ Instalátor vyhledá kontejnery Nextcloudu, ověří požadavky, zazálohuje st�
 
 ## Struktura repozitáře
 
-- `appinfo/`, `lib/`, `js/`, `css/`, `l10n/`, `templates/`, `img/` – soubory samotné aplikace
+- `src/` – hotová aplikace (`src/appinfo/`, `src/lib/`, `src/js/`, `src/css/`, `src/l10n/`, `src/templates/`, `src/img/`)
 - `docs/` – veřejná dokumentace v češtině a angličtině
 - `install.sh`, `uninstall.sh`, `scripts/` – volitelné nástroje pro Docker/NAS, pro běžnou instalaci Nextcloudu nejsou potřeba
-- `README.md`, `README_CZ.md` – základní dokumentace
+- `build-release.sh` – sestavení instalačních archivů
+- `README.md`, `README_CZ.md`, `LICENSE`, `CHANGELOG.md` – dokumentace a licence
 
 ## Další dokumentace
 
@@ -76,7 +76,3 @@ Instalátor vyhledá kontejnery Nextcloudu, ověří požadavky, zazálohuje st�
 AGPL-3.0-or-later. Viz [LICENSE](LICENSE) a [úplné znění AGPL 3.0](https://www.gnu.org/licenses/agpl-3.0.txt).
 
 Veřejná historie vydání: [CHANGELOG.md](CHANGELOG.md). Český přehled: [CHANGELOG.cs.md](CHANGELOG.cs.md).
-
-## Úplný zdrojový balíček a Hacesoft Publisher
-
-Balíček pro GitHub a instalaci na NAS obsahuje `install.sh`, `uninstall.sh`, `build-release.sh`, adresáře `scripts/`, `docs/` a hotovou aplikaci v `src/`. Pro instalaci na NAS rozbalte celý projekt a v jeho kořeni spusťte `sudo sh install.sh`. Do `custom_apps` se kopíruje pouze běhový obsah `src/`, nikoliv dokumentace projektu a instalační skripty. Publisher následně provede vlastní kontrolu a sestaví distribuční archiv s kořenovým adresářem podle ID aplikace; zdejší zdrojový ZIP není přímo distribuční TAR.GZ.

@@ -1,7 +1,5 @@
 # Home Wiki 1.0.0
 
-> **Publisher input archive:** This ZIP uses the final app-rooted format. NAS deployment helpers (`install.sh`, `uninstall.sh`, `build-release.sh`, `scripts/`) are not included. Any instructions referencing those files apply to the separate full-source GitHub repository, not this archive. The final signed App Store `.tar.gz` is produced by Hacesoft Publisher.
-
 
 Home Wiki is a Markdown-based wiki for **Nextcloud 35**. Pages and attachments are stored in the page owner's Nextcloud Files; the Nextcloud database stores the page tree, sharing, tags and other metadata.
 
@@ -16,30 +14,17 @@ Home Wiki is a Markdown-based wiki for **Nextcloud 35**. Pages and attachments a
 
 ## Installation
 
-### Standard manual installation from GitHub
+Install and enable [HC Shared App Core](https://github.com/hacesoft/core) 0.18.8 or newer first. The Nextcloud application code is located in `src/`, **not** at the repository root.
 
-Clone the repository directly as `hc_homewiki` into your Nextcloud `custom_apps` directory:
-
-```sh
-cd /var/www/html/custom_apps
-git clone https://github.com/hacesoft/Wiki.git hc_homewiki
-cd /var/www/html
-sudo -u www-data php occ app:enable hc_homewiki
-```
-
-The app files (`appinfo/`, `lib/`, `js/`, etc.) are at the **repository root**, not in a nested directory. Alternatively download a source ZIP, rename its extracted directory to `hc_homewiki`, place it under `custom_apps/` and enable it through Nextcloud. Back up your Nextcloud instance before updating an existing installation. See [installation documentation](docs/en/INSTALLATION.md).
-
-### Synology NAS / Docker
-
-For a deployment with Docker CLI access, unpack or clone this repository outside `custom_apps` and run:
+For the documented Synology/Docker deployment, clone the complete project outside `custom_apps` and run:
 
 ```sh
+git clone https://github.com/hacesoft/Wiki.git
+cd Wiki
 sudo sh install.sh
 ```
 
-This optional installer locates the Nextcloud containers, verifies requirements, backs up the currently installed application code, deploys the runtime application files and checks the result. It does not remove user Wiki data. Container discovery is designed for typical Nextcloud Docker deployments and cannot be guaranteed for every setup. See [NAS installation](docs/cz/NAS_INSTALACE.md).
-
-`uninstall.sh` removes only the application code from the Docker deployment and preserves user files and database content. Use it only if you understand the consequences of disabling/removing the app.
+The installer stages `src/` in Nextcloud under the technical app ID `hc_homewiki` without deleting user content. On other environments, deploy **only the contents of `src/`** into `custom_apps/hc_homewiki/`, set appropriate permissions, then run `occ app:enable hc_homewiki` as the web-server user. Back up the database and files before upgrading. See the [installation guide](docs/en/INSTALLATION.md).
 
 ## Features
 
@@ -55,10 +40,11 @@ This optional installer locates the Nextcloud containers, verifies requirements,
 
 ## Repository layout
 
-- `appinfo/`, `lib/`, `js/`, `css/`, `l10n/`, `templates/`, `img/` – Nextcloud application runtime
+- `src/` – Nextcloud runtime (`src/appinfo/`, `src/lib/`, `src/js/`, `src/css/`, `src/l10n/`, `src/templates/`, `src/img/`)
 - `docs/` – public documentation (Czech and English)
 - `install.sh`, `uninstall.sh`, `scripts/` – optional Docker/NAS deployment utilities; not needed for standard Nextcloud installation
-- `README.md`, `README_CZ.md` – project information
+- `build-release.sh` – build script
+- `README.md`, `README_CZ.md`, `LICENSE`, `CHANGELOG.md` – project information and license
 
 ## Languages
 
@@ -69,7 +55,3 @@ Czech, English, German, Spanish, French, Italian, Dutch, Polish, Portuguese (Por
 AGPL-3.0-or-later. See [LICENSE](LICENSE) and the [full AGPL 3.0 license text](https://www.gnu.org/licenses/agpl-3.0.txt).
 
 Release history: [CHANGELOG.md](CHANGELOG.md). Czech: [CHANGELOG.cs.md](CHANGELOG.cs.md).
-
-## Full source archive and Hacesoft Publisher
-
-This GitHub/NAS project contains install.sh, uninstall.sh, build-release.sh, scripts/, docs/ and the installable Nextcloud runtime in src/. For NAS installation, extract the entire project and run `sudo sh install.sh` from its root. Do not copy the project root or scripts/ directly into Nextcloud custom_apps; the installer deploys src/. Publisher independently validates this full-source input and builds its own app-ID-rooted, signed distribution archive.

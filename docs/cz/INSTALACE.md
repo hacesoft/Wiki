@@ -8,16 +8,19 @@ Home Wiki podporuje Nextcloud 35, PHP 8.3–8.5 a MariaDB/MySQL. Server musí m�
 
 Shared App Core nainstalujte a povolte dříve než Home Wiki.
 
-## Instalace z GitHubu
+## Instalace ze zdrojového projektu
 
-Adresář aplikace musí odpovídat ID `hc_homewiki`. Zdrojové adresáře `appinfo/`, `lib/`, `js/` jsou přímo v kořeni tohoto repozitáře:
+Aplikace je umístěna v `src/`, technické ID je `hc_homewiki`. Celý repozitář nelze umístit přímo do Nextcloud `custom_apps/`.
 
-```bash
-cd /var/www/html/custom_apps
-git clone https://github.com/hacesoft/Wiki.git hc_homewiki
-cd /var/www/html
-sudo -u www-data php occ app:enable hc_homewiki
+Na Synology NAS / Dockeru naklonujte repozitář mimo `custom_apps` a spusťte instalátor:
+
+```sh
+git clone https://github.com/hacesoft/Wiki.git
+cd Wiki
+sudo sh install.sh
 ```
+
+Alternativně přeneste pouze **obsah `src/`** do `custom_apps/hc_homewiki/`, nastavte příslušná oprávnění a spusťte jako uživatel webového serveru `php occ app:enable hc_homewiki`.
 
 Při první instalaci Nextcloud automaticky spustí migraci z `lib/Migration/` a vytvoří potřebné tabulky a indexy. Není potřeba ručně vytvářet databázové tabulky.
 

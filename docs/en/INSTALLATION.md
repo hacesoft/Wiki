@@ -8,16 +8,19 @@ Home Wiki supports Nextcloud 35, PHP 8.3–8.5 and MariaDB/MySQL. The PHP ZIP ex
 
 Install and enable Shared App Core before Home Wiki.
 
-## Install from GitHub
+## Install from the source project
 
-The application directory must match the app ID `hc_homewiki`. Application folders (`appinfo/`, `lib/`, `js/`) are at the repository root:
+The application code resides in `src/`, and its technical ID is `hc_homewiki`. Do not clone the entire repository directly into Nextcloud `custom_apps/`.
 
-```bash
-cd /var/www/html/custom_apps
-git clone https://github.com/hacesoft/Wiki.git hc_homewiki
-cd /var/www/html
-sudo -u www-data php occ app:enable hc_homewiki
+On Synology NAS / Docker, clone the repository outside `custom_apps` and run:
+
+```sh
+git clone https://github.com/hacesoft/Wiki.git
+cd Wiki
+sudo sh install.sh
 ```
+
+Alternatively deploy **only the contents of `src/`** to `custom_apps/hc_homewiki/`, set correct ownership/permissions and, as the web-server user, run `php occ app:enable hc_homewiki`.
 
 Nextcloud automatically runs the migration in `lib/Migration/` and creates the required tables and indexes. No manual database setup is required.
 
