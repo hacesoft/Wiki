@@ -35,8 +35,8 @@ Osobní a sdílená Markdown wiki přímo v Nextcloudu. Stránky, obrázky a př
 
 ## Dokumentace
 https://github.com/hacesoft/Wiki</description><version>1.2.8</version><licence>AGPL-3.0-or-later</licence><author homepage="https://github.com/hacesoft">hacesoft</author><namespace>HcHomeWiki</namespace><category>office</category><category>tools</category><website>https://github.com/hacesoft/Wiki</website><bugs>https://github.com/hacesoft/Wiki/issues</bugs><repository>https://github.com/hacesoft/Wiki</repository><screenshots>
-        <screenshot>https://raw.githubusercontent.com/hacesoft/Wiki/main/screenshots/01.png</screenshot>
-        <screenshot>https://raw.githubusercontent.com/hacesoft/Wiki/main/screenshots/02.png</screenshot>
+        <screenshot>https://raw.githubusercontent.com/hacesoft/Wiki/main/screenshot/01.png</screenshot>
+        <screenshot>https://raw.githubusercontent.com/hacesoft/Wiki/main/screenshot/02.png</screenshot>
     </screenshots><dependencies>
         <php min-version="8.3" max-version="8.5"/>
         <lib>zip</lib>

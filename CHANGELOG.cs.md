@@ -12,7 +12,7 @@
 - Editorový toolbar zůstává v jednom vodorovně posuvném řádku pro dotyk, kolečko i trackpad.
 
 - Aktualizována veřejná dokumentace a README pro vydání 1.2.7.
-- Přidána metadata screenshotů App Store pro `screenshots/01.png` a `screenshots/02.png`.
+- Přidána metadata screenshotů App Store pro `screenshot/01.png` a `screenshot/02.png`.
 - Z `appinfo/info.xml` odstraněny duplicitní dokumentační odkazy; v prostředcích App Store zůstává jen domovská stránka.
 
 ## 1.2.5

@@ -12,7 +12,7 @@
 - Kept the editor toolbar on one horizontally movable row for touch, mouse wheel and trackpad.
 
 - Updated public documentation and README files for release 1.2.7.
-- Added App Store screenshot metadata for `screenshots/01.png` and `screenshots/02.png`.
+- Added App Store screenshot metadata for `screenshot/01.png` and `screenshot/02.png`.
 - Removed duplicate documentation resource links from `appinfo/info.xml`; only the homepage remains in App Store resources.
 
 ## 1.2.5

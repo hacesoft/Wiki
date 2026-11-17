@@ -4,9 +4,9 @@ Home Wiki je Markdown Wiki pro **Nextcloud 35**. Stránky, obrázky a přílohy 
 
 ## Ukázky
 
-![Ukázka Home Wiki 01](https://raw.githubusercontent.com/hacesoft/Wiki/main/screenshots/01.png)
+![Ukázka Home Wiki 01](https://raw.githubusercontent.com/hacesoft/Wiki/main/screenshot/01.png)
 
-![Ukázka Home Wiki 02](https://raw.githubusercontent.com/hacesoft/Wiki/main/screenshots/02.png)
+![Ukázka Home Wiki 02](https://raw.githubusercontent.com/hacesoft/Wiki/main/screenshot/02.png)
 
 [English](README.md)
 
