@@ -1,5 +1,20 @@
 ## 1.2.1
 
+## 1.2.8
+
+- Zvýšena verze, aby Nextcloud a prohlížeč jednoznačně načetly nové JS/CSS po úpravách responzivního rozložení.
+- Funkční chování odpovídá finální variantě 1.2.7 s dotykovým rozložením podle FamilyTree.
+- Projektová metadata `package.json` / `package-lock.json` byla sjednocena s `appinfo/info.xml`.
+
+## 1.2.7
+- Široké dotykové Android/iPad tablety zůstávají v overlay workspace režimu i naležato bez horního limitu šířky; boční ouško je připnuté ke středu viewportu a fokus jej neposouvá.
+- Dolaďeno responzivní rozvržení telefonu/tabletu: strom stránek se otevírá jako překryvný panel přes boční ouško i na tabletu naležato.
+- Editorový toolbar zůstává v jednom vodorovně posuvném řádku pro dotyk, kolečko i trackpad.
+
+- Aktualizována veřejná dokumentace a README pro vydání 1.2.7.
+- Přidána metadata screenshotů App Store pro `screenshots/01.png` a `screenshots/02.png`.
+- Z `appinfo/info.xml` odstraněny duplicitní dokumentační odkazy; v prostředcích App Store zůstává jen domovská stránka.
+
 ## 1.2.5
 
 - Mobile editor toolbar is now fixed directly above the content instead of floating over it.

@@ -123,9 +123,16 @@
                     aria-expanded="false"
                     aria-label="<?php p($l->t('Wiki tools')); ?>"
                     title="<?php p($l->t('Wiki tools')); ?>">⋯</button>
-            <button id="hc-homewiki-sidebar-open" type="button" aria-controls="hc-homewiki-sidebar" aria-expanded="false" hidden></button>
             <span id="hc-homewiki-mobile-current" hidden><?php p($l->t('Home Wiki')); ?></span>
         </div>
+
+        <button id="hc-homewiki-sidebar-open"
+                class="hc-homewiki-sidebar-ear"
+                type="button"
+                aria-controls="hc-homewiki-sidebar"
+                aria-expanded="false"
+                aria-label="<?php p($l->t('Navigation')); ?>"
+                title="<?php p($l->t('Navigation')); ?>">❯</button>
 
         <div id="hc-homewiki-empty" class="hc-homewiki-empty-state">
             <div class="hc-homewiki-empty-icon" aria-hidden="true">📖</div>

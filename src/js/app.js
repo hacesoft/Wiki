@@ -325,10 +325,36 @@ const fStartHomeWiki = () => {
         oPreview.addEventListener('scroll', () => fnSync(oPreview, oSource), { signal: oLifecycleSignal, passive: true });
     };
 
-    /** CZ-FUNKCE: Zjistí, zda aplikace běží v mobilním rozložení. Vstup: žádný přímý parametr. Výstup: boolean. */
+    // CZ: Stejný dotykový workspace jako ve FamilyTree 1.1.7.
+    // Telefon i tablet používají overlay panel na výšku i na šířku; desktop zůstává beze změny.
+    const oTouchWorkspaceMedia = window.matchMedia('(pointer: coarse) and (max-width: 1180px)');
+
+    /**
+     * CZ-FUNKCE: Synchronizuje dotykové rozložení Home Wiki podle stejného pravidla jako FamilyTree.
+     * Vstup: volitelný režim naměřený Shared App Core. Výstup: účinný režim `mobile`, `tablet` nebo `desktop`.
+     */
+    const fnSyncTouchWorkspace = (sMeasuredMode = '') => {
+        const oApp = fnById('hc-homewiki-app');
+        if (!oApp) return 'desktop';
+        const bTouchWorkspace = oTouchWorkspaceMedia.matches;
+        oApp.classList.toggle('hc-homewiki-touch-layout', bTouchWorkspace);
+        if (bTouchWorkspace) {
+            const nWidth = Math.max(0, Number(oApp.getBoundingClientRect?.().width || window.innerWidth || 0));
+            const sTouchMode = nWidth < 600 ? 'mobile' : 'tablet';
+            if (String(oApp.dataset.coreLayout || '') !== sTouchMode) oApp.dataset.coreLayout = sTouchMode;
+            return sTouchMode;
+        }
+        const sNativeMode = ['mobile', 'tablet', 'desktop'].includes(String(sMeasuredMode || ''))
+            ? String(sMeasuredMode)
+            : String(oApp.dataset.coreLayout || 'desktop');
+        return sNativeMode;
+    };
+
+    /** CZ-FUNKCE: Zjistí, zda aplikace běží v dotykovém nebo mobilním/tabletovém workspace režimu. Vstup: žádný přímý parametr. Výstup: boolean. */
     const fnIsMobileLayout = () => {
         const oApp = fnById('hc-homewiki-app');
-        return ['mobile', 'tablet'].includes(String(oApp?.dataset.coreLayout || ''));
+        return !!oApp && (oApp.classList.contains('hc-homewiki-touch-layout')
+            || ['mobile', 'tablet'].includes(String(oApp.dataset.coreLayout || '')));
     };
 
     /** CZ-FUNKCE: Zobrazí nebo skryje mobilní plovoucí paletu editorových nástrojů. Vstup: `bOpen`. Výstup: změna UI stavu. */
@@ -457,7 +483,7 @@ const fStartHomeWiki = () => {
     const fnSetSidebarWidth = (nWidth, bPersist = false) => {
         const oApp = fnById('hc-homewiki-app');
         const oResizer = fnById('hc-homewiki-sidebar-resizer');
-        if (!oApp || oApp.dataset.coreLayout === 'mobile' || oApp.dataset.coreLayout === 'tablet') return;
+        if (!oApp || fnIsMobileLayout()) return;
         const { nMin, nMax } = fnSidebarWidthLimits();
         const nSafeWidth = Math.max(nMin, Math.min(nMax, Math.round(Number(nWidth) || 0)));
         oApp.style.setProperty('--hc-homewiki-sidebar-width', nSafeWidth + 'px');
@@ -485,7 +511,7 @@ const fStartHomeWiki = () => {
     /** CZ-FUNKCE: Přepočítá šířku postranního panelu z vodorovné pozice ukazatele. Vstup: `nClientX`, `bPersist = false`. Výstup: výsledek operace nebo změna aplikačního/UI stavu. */
     const fnResizeSidebarFromClientX = (nClientX, bPersist = false) => {
         const oApp = fnById('hc-homewiki-app');
-        if (!oApp || oApp.dataset.coreLayout === 'mobile' || oApp.dataset.coreLayout === 'tablet') return;
+        if (!oApp || fnIsMobileLayout()) return;
         const oRect = oApp.getBoundingClientRect();
         fnSetSidebarWidth(Number(nClientX) - oRect.left, bPersist);
     };
@@ -3352,7 +3378,25 @@ const fStartHomeWiki = () => {
         oCustomToolbar.classList.add('hc-homewiki-toolbar-inline-actions');
         if (oCustomToolbar.parentElement !== oCoreToolbar) oCoreToolbar.prepend(oCustomToolbar);
         if (oLegacyRow) oLegacyRow.hidden = true;
+        fnEnableResponsiveToolbarPan(oCoreToolbar);
         return true;
+    };
+
+    /**
+     * CZ-FUNKCE: Zlepší vodorovné posouvání jednořádkového editorového toolbaru na telefonu a tabletu.
+     * Vstup: hlavní toolbar Shared App Core. Výstup: kolečko/trackpad může posouvat paletu vodorovně; dotykové pan-x zůstává nativní.
+     */
+    const fnEnableResponsiveToolbarPan = (oCoreToolbar) => {
+        if (!(oCoreToolbar instanceof HTMLElement) || oCoreToolbar.dataset.hcHorizontalPan === '1') return;
+        oCoreToolbar.dataset.hcHorizontalPan = '1';
+        oCoreToolbar.addEventListener('wheel', (oEvent) => {
+            if (!fnIsMobileLayout()) return;
+            if (oCoreToolbar.scrollWidth <= oCoreToolbar.clientWidth) return;
+            const nDelta = Math.abs(oEvent.deltaX) > Math.abs(oEvent.deltaY) ? oEvent.deltaX : oEvent.deltaY;
+            if (!nDelta) return;
+            oCoreToolbar.scrollLeft += nDelta;
+            oEvent.preventDefault();
+        }, { signal: oLifecycleSignal, passive: false });
     };
 
     /** CZ-FUNKCE: Aktualizuje stav a dostupnost editorového toolbaru. Vstup: žádný přímý parametr. Výstup: výsledek operace nebo změna aplikačního/UI stavu. */
@@ -4123,18 +4167,28 @@ const fStartHomeWiki = () => {
         oApp.classList.toggle('hc-homewiki-sidebar-open', bOpen);
         oBackdrop.hidden = !bOpen;
         oOpenButton.setAttribute('aria-expanded', bOpen ? 'true' : 'false');
+        oOpenButton.setAttribute('aria-label', t(sAppId, 'Navigation'));
+        oOpenButton.setAttribute('title', t(sAppId, 'Navigation'));
+        oOpenButton.textContent = '❯';
 
-        if (bOpen) {
-            window.requestAnimationFrame(() => oCloseButton?.focus());
-        } else if (oSidebarReturnFocus instanceof HTMLElement) {
-            oSidebarReturnFocus.focus();
+        // CZ: Stejně jako ve FamilyTree po otevření přesuneme fokus na křížek v panelu.
+        // Ouško zůstává na místě a není důvod posouvat viewport.
+        if (bOpen && oCloseButton instanceof HTMLElement) {
+            window.requestAnimationFrame(() => {
+                try { oCloseButton.focus({ preventScroll: true }); }
+                catch { oCloseButton.focus(); }
+            });
+        } else if (!bOpen) {
+            const oFocusTarget = oSidebarReturnFocus instanceof HTMLElement ? oSidebarReturnFocus : oOpenButton;
+            try { oFocusTarget.focus({ preventScroll: true }); }
+            catch { oFocusTarget.focus(); }
             oSidebarReturnFocus = null;
         }
     };
 
     /** CZ-FUNKCE: Zavře pomocný postranní panel. Vstup: žádný přímý parametr. Výstup: výsledek operace nebo změna aplikačního/UI stavu. */
     const fnCloseSidebar = () => {
-        if (fnById('hc-homewiki-app')?.dataset.coreLayout !== 'desktop') {
+        if (fnIsMobileLayout()) {
             fnSetSidebar(false);
         }
     };
@@ -4559,19 +4613,34 @@ const fStartHomeWiki = () => {
         oLayoutController = oCore.layout.observe(oApp, {
             topOffset: 50,
             onResize: (oMetrics) => {
-                if (oMetrics.mode === 'desktop' && oApp.classList.contains('hc-homewiki-sidebar-open')) {
+                const sEffectiveMode = fnSyncTouchWorkspace(String(oMetrics.mode || ''));
+                if (!oTouchWorkspaceMedia.matches && sEffectiveMode === 'desktop'
+                    && oApp.classList.contains('hc-homewiki-sidebar-open')) {
                     fnSetSidebar(false);
                 }
-                if (oMetrics.mode === 'desktop') fnRestoreSidebarWidth();
+                if (!oTouchWorkspaceMedia.matches && sEffectiveMode === 'desktop') fnRestoreSidebarWidth();
                 fnUpdateMobileEditorUi();
             },
         });
-        fnRestoreSidebarWidth();
+        const sInitialEffectiveMode = fnSyncTouchWorkspace();
+        if (!oTouchWorkspaceMedia.matches && sInitialEffectiveMode === 'desktop') fnRestoreSidebarWidth();
         fnUpdateMobileEditorUi();
+
+        // CZ: Stejně jako ve FamilyTree reaguje vlastní media query přímo na otočení dotykového zařízení.
+        const fnHandleTouchWorkspaceChange = () => {
+            const sEffectiveMode = fnSyncTouchWorkspace();
+            if (!oTouchWorkspaceMedia.matches && sEffectiveMode === 'desktop'
+                && oApp.classList.contains('hc-homewiki-sidebar-open')) fnSetSidebar(false);
+            fnUpdateMobileEditorUi();
+        };
+        oTouchWorkspaceMedia.addEventListener?.('change', fnHandleTouchWorkspaceChange, { signal: oLifecycleSignal });
+        window.addEventListener('orientationchange', () => {
+            window.requestAnimationFrame(fnHandleTouchWorkspaceChange);
+        }, { signal: oLifecycleSignal });
 
         const oSidebarResizer = fnById('hc-homewiki-sidebar-resizer');
         oSidebarResizer?.addEventListener('pointerdown', (oEvent) => {
-            if (oApp.dataset.coreLayout !== 'desktop') return;
+            if (fnIsMobileLayout()) return;
             if (oEvent.pointerType === 'mouse' && oEvent.button !== 0) return;
             oEvent.preventDefault();
             nSidebarResizePointerId = Number(oEvent.pointerId);
@@ -4600,7 +4669,7 @@ const fStartHomeWiki = () => {
         oSidebarResizer?.addEventListener('pointerup', fnFinishSidebarResize, { signal: oLifecycleSignal });
         oSidebarResizer?.addEventListener('pointercancel', fnFinishSidebarResize, { signal: oLifecycleSignal });
         oSidebarResizer?.addEventListener('keydown', (oEvent) => {
-            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(oEvent.key) || oApp.dataset.coreLayout !== 'desktop') return;
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(oEvent.key) || fnIsMobileLayout()) return;
             oEvent.preventDefault();
             const { nMin, nMax } = fnSidebarWidthLimits();
             const nCurrent = Number.parseInt(getComputedStyle(oApp).getPropertyValue('--hc-homewiki-sidebar-width'), 10) || 300;
@@ -4649,7 +4718,10 @@ const fStartHomeWiki = () => {
             if (sDraggedPageId) fnAutoScrollTreeDrag(oEvent.clientY);
         }, { signal: oLifecycleSignal });
 
-        fnBind('hc-homewiki-sidebar-open', 'click', (oEvent) => fnSetSidebar(true, oEvent.currentTarget));
+        fnBind('hc-homewiki-sidebar-open', 'click', (oEvent) => {
+            const bOpen = oApp.classList.contains('hc-homewiki-sidebar-open');
+            fnSetSidebar(!bOpen, oEvent.currentTarget);
+        });
         fnBind('hc-homewiki-sidebar-close', 'click', () => fnSetSidebar(false));
         fnBind('hc-homewiki-sidebar-backdrop', 'click', () => fnSetSidebar(false));
         fnBind('hc-homewiki-new', 'click', fnCreatePage);

@@ -2760,3 +2760,163 @@
 .hc-homewiki-app[data-core-layout="tablet"] #hc-homewiki-core-editor .hc-core-editor__toolbar > * {
     flex: 0 0 auto !important;
 }
+
+
+/* ============================================================================
+ * Home Wiki 1.2.8 – dotykový workspace převzatý z ověřeného FamilyTree 1.1.7.
+ * Jediné pravidlo aktivace: (pointer: coarse) and (max-width: 1180px).
+ * Sidebar je overlay drawer; boční ouško zůstává na stejném místě i po otevření.
+ * Desktopové rozložení zůstává beze změny.
+ * ============================================================================ */
+.hc-homewiki-app .hc-homewiki-sidebar-ear { display: none; }
+
+@media (pointer: coarse) and (max-width: 1180px) {
+    .hc-homewiki-app.hc-homewiki-touch-layout {
+        position: relative !important;
+        display: block !important;
+        overflow: hidden !important;
+    }
+
+    .hc-homewiki-app.hc-homewiki-touch-layout .hc-homewiki-main {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        height: 100% !important;
+    }
+
+    .hc-homewiki-app.hc-homewiki-touch-layout .hc-homewiki-sidebar {
+        display: flex !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        z-index: 2502 !important;
+        flex-direction: column !important;
+        width: min(320px, calc(100% - 42px)) !important;
+        max-width: none !important;
+        height: 100% !important;
+        overflow: hidden !important;
+        border-right: 1px solid var(--color-border) !important;
+        transform: translateX(-105%) !important;
+        visibility: visible !important;
+        transition: transform .18s ease !important;
+        box-shadow: 10px 0 30px rgba(0, 0, 0, .26) !important;
+    }
+
+    .hc-homewiki-app.hc-homewiki-touch-layout.hc-homewiki-sidebar-open .hc-homewiki-sidebar {
+        transform: translateX(0) !important;
+    }
+
+    .hc-homewiki-app.hc-homewiki-touch-layout .hc-homewiki-sidebar-mobile-head {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .hc-homewiki-app.hc-homewiki-touch-layout .hc-homewiki-side-scroll {
+        flex: 1 1 0 !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        overscroll-behavior: contain;
+    }
+
+    .hc-homewiki-app.hc-homewiki-touch-layout .hc-homewiki-sidebar-resizer {
+        display: none !important;
+    }
+
+    .hc-homewiki-app.hc-homewiki-touch-layout #hc-homewiki-sidebar-backdrop:not([hidden]) {
+        display: block !important;
+        position: absolute !important;
+        z-index: 2501 !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        padding: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: #0008 !important;
+    }
+
+    .hc-homewiki-app.hc-homewiki-touch-layout .hc-homewiki-sidebar-ear {
+        display: flex !important;
+        position: absolute !important;
+        top: 10px !important;
+        left: 0 !important;
+        z-index: 2503 !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 27px !important;
+        min-width: 27px !important;
+        height: 46px !important;
+        min-height: 46px !important;
+        padding: 0 !important;
+        border: 1px solid var(--color-border) !important;
+        border-left: 0 !important;
+        border-radius: 0 12px 12px 0 !important;
+        color: var(--color-main-text) !important;
+        background: var(--color-main-background) !important;
+        box-shadow: 0 2px 8px #0003 !important;
+        transform: none !important;
+        font-size: 18px !important;
+        line-height: 1 !important;
+        cursor: pointer !important;
+    }
+
+    /* Stejně jako FamilyTree se ouško při otevření panelu nikam nepřesouvá.
+       Zavření je dostupné tlačítkem × uvnitř panelu. */
+    .hc-homewiki-app.hc-homewiki-touch-layout.hc-homewiki-sidebar-open .hc-homewiki-sidebar-ear {
+        left: 0 !important;
+        top: 10px !important;
+    }
+
+    /* Dotykový režim má vždy kompaktní horní řádek Wiki, i když Core původně
+       vyhodnotil landscape tablet jako desktop. */
+    .hc-homewiki-app.hc-homewiki-touch-layout .hc-homewiki-mobile-bar {
+        display: flex !important;
+    }
+
+    .hc-homewiki-app.hc-homewiki-touch-layout .hc-homewiki-page-head {
+        display: none !important;
+    }
+
+    /* Jeden řádek nástrojů, bez zalomení; posun prstem, kolečkem i trackpadem. */
+    .hc-homewiki-app.hc-homewiki-touch-layout #hc-homewiki-core-editor .hc-core-editor__toolbar {
+        display: flex !important;
+        flex-flow: row nowrap !important;
+        align-items: center !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        overscroll-behavior-x: contain !important;
+        touch-action: pan-x !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        white-space: nowrap !important;
+    }
+
+    .hc-homewiki-app.hc-homewiki-touch-layout #hc-homewiki-core-editor .hc-core-editor__toolbar::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    .hc-homewiki-app.hc-homewiki-touch-layout #hc-homewiki-core-editor .hc-core-editor__toolbar > * {
+        flex: 0 0 auto !important;
+    }
+}
+
+/* Nízká landscape orientace – stejný princip jako ve FamilyTree. */
+@media (pointer: coarse) and (max-width: 1180px) and (max-height: 460px) {
+    .hc-homewiki-app.hc-homewiki-touch-layout .hc-homewiki-sidebar-ear {
+        top: 4px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+    }
+    .hc-homewiki-app.hc-homewiki-touch-layout .hc-homewiki-mobile-bar {
+        min-height: 32px !important;
+        height: 32px !important;
+        padding-top: 1px !important;
+        padding-bottom: 1px !important;
+    }
+}

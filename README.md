@@ -1,8 +1,14 @@
-# Home Wiki 1.2.0
+# Home Wiki 1.2.8
 
 Home Wiki is a Markdown-based wiki for **Nextcloud 35**. Pages, images and attachments are stored in the owner's Nextcloud Files; the Nextcloud database stores the page tree, sharing, tags, links and other metadata.
 
-[Česky](README_CZ.md) · [English documentation](docs/en/README.md) · [Česká dokumentace](docs/cz/README.md)
+## Screenshots
+
+![Home Wiki screenshot 01](https://raw.githubusercontent.com/hacesoft/Wiki/main/screenshots/01.png)
+
+![Home Wiki screenshot 02](https://raw.githubusercontent.com/hacesoft/Wiki/main/screenshots/02.png)
+
+[Česky](README_CZ.md)
 
 ## Requirements
 

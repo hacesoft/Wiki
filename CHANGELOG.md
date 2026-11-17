@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.8
+
+- Release version bump to force a clean Nextcloud/browser asset refresh after the responsive workspace changes.
+- Runtime functionality is unchanged from the final 1.2.7 FamilyTree-style touch layout.
+- Project package metadata was synchronized with `appinfo/info.xml`.
+
+## 1.2.7
+- Wide touch Android/iPad tablets remain in overlay workspace mode in landscape without an upper width limit; the side ear is fixed to the viewport center and focus no longer scrolls it.
+- Refined phone/tablet responsive workspace: page tree opens as an overlay drawer from a side ear, including landscape tablets.
+- Kept the editor toolbar on one horizontally movable row for touch, mouse wheel and trackpad.
+
+- Updated public documentation and README files for release 1.2.7.
+- Added App Store screenshot metadata for `screenshots/01.png` and `screenshots/02.png`.
+- Removed duplicate documentation resource links from `appinfo/info.xml`; only the homepage remains in App Store resources.
+
 ## 1.2.5
 
 - Mobile editor toolbar is now fixed directly above the content instead of floating over it.
