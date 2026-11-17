@@ -97,6 +97,75 @@ final class WikiStorageService {
         });
     }
 
+    /**
+     * Copy one page with its private media and attachments to the new owner's
+     * own Files storage. Never overwrite pre-existing files. The caller keeps
+     * the original until the ownership DB transaction commits.
+     */
+    public function copyPageForTransfer(string $sourceUid, string $targetUid, array $page, array $newPage, array $metadata, array &$createdPaths): void {
+        $pageId = (string)$page['id'];
+        $targetPath = (string)$newPage['file_path'];
+        $content = $this->parseRawPage($this->readRawPage($sourceUid, (string)$page['file_path']))['content'];
+        $this->withStorageOwnerContext($targetUid, function () use ($sourceUid, $targetUid, $pageId, $targetPath, $content, $metadata, &$createdPaths): void {
+            $sourceRoot = $this->wikiRoot($sourceUid);
+            $destinationRoot = $this->wikiRoot($targetUid);
+            $pages = $this->ensureFolder($destinationRoot, 'pages');
+            if ($pages->nodeExists(basename($targetPath))) {
+                throw new \RuntimeException('Destination page file already exists', 409);
+            }
+            foreach (['media', 'attachments'] as $kind) {
+                foreach ([$this->mediaFolderName($pageId), $pageId] as $folderName) {
+                    if (!$sourceRoot->nodeExists($kind . '/' . $folderName)) continue;
+                    $destinationParent = $this->ensureFolder($destinationRoot, $kind);
+                    if ($destinationParent->nodeExists($folderName)) {
+                        throw new \RuntimeException('Destination page assets already exist', 409);
+                    }
+                }
+            }
+            // Track only paths proved absent and created by THIS operation.
+            // Never delete an unrelated recipient file during rollback.
+            $createdPaths[] = $targetPath;
+            $this->createImportedPage($targetUid, $targetPath, $content, $metadata);
+            foreach (['media', 'attachments'] as $kind) {
+                foreach (array_unique([$this->mediaFolderName($pageId), $pageId]) as $folderName) {
+                    if (!$sourceRoot->nodeExists($kind . '/' . $folderName)) continue;
+                    $destinationParent = $this->ensureFolder($destinationRoot, $kind);
+                    if ($destinationParent->nodeExists($folderName)) {
+                        throw new \RuntimeException('Destination page assets already exist', 409);
+                    }
+                    $createdPaths[] = $kind . '/' . $folderName;
+                    $sourceRoot->get($kind . '/' . $folderName)->copy($destinationParent->getPath() . '/' . $folderName);
+                }
+            }
+        });
+    }
+
+    /** Roll back only explicitly recorded paths newly created by this transfer. */
+    public function rollbackTransferPaths(string $targetUid, array $createdPaths): void {
+        $this->withStorageOwnerContext($targetUid, function () use ($targetUid, $createdPaths): void {
+            $root = $this->wikiRoot($targetUid);
+            foreach (array_reverse($createdPaths) as $relativePath) {
+                try { $root->get((string)$relativePath)->delete(); } catch (NotFoundException) {}
+            }
+        });
+    }
+
+    /** Called after the transfer DB transaction commits. No broad folder deletion. */
+    public function deleteTransferredSource(string $sourceUid, string $pageId, string $relativePath): void {
+        $this->withStorageOwnerContext($sourceUid, function () use ($sourceUid, $pageId, $relativePath): void {
+            $root = $this->wikiRoot($sourceUid);
+            $paths = [$relativePath];
+            foreach (['media', 'attachments'] as $kind) {
+                foreach (array_unique([$this->mediaFolderName($pageId), $pageId]) as $folder) {
+                    $paths[] = $kind . '/' . $folder;
+                }
+            }
+            foreach ($paths as $path) {
+                try { $root->get($path)->delete(); } catch (NotFoundException) {}
+            }
+        });
+    }
+
     public function pagePath(string $id, string $slug): string {
         // CZ-FUNKCE: Provádí dílčí operaci `pagePath` v rámci Home Wiki. Vstup: `$id`, `$slug`. Výstup: hodnota typu `string`.
         return 'pages/' . $id . '-' . $this->safeName($slug) . '.md';

@@ -78,6 +78,15 @@ const fStartHomeWiki = () => {
     let bHandlingRemoteRevision = false;
     let nDirtyWatchTimer = 0;
     let bTreeDragEnabled = false;
+    let bTreeSharingStateEnabled = false;
+    let bPageNavigationEnabled = false;
+    let sEditorOpenPosition = 'bottom';
+    let bEditorScrollSyncEnabled = false;
+    let bEditorScrollSyncApplying = false;
+    let bMobileToolbarOpen = false;
+    let sEffectiveHomePageId = '';
+    let aPageNavigationHistory = [];
+    let nPageNavigationIndex = -1;
     let bTreeSettingsLoaded = false;
     let sMenuDensity = 'compact';
     let sPageHeaderMode = 'scroll';
@@ -252,6 +261,95 @@ const fStartHomeWiki = () => {
         fnRenderCoreMarkdown(oLivePreview, String(sMarkdown || ''));
     };
 
+    /**
+     * CZ-FUNKCE: Vrátí rolovatelné prvky zdrojového editoru a jeho živého náhledu ze Shared App Core.
+     * Vstup: žádný. Výstup: objekt `{ source, preview }`; chybějící prvek má hodnotu null.
+     */
+    const fnEditorScrollElements = () => {
+        const oEditorRoot = oCoreEditor?.element instanceof HTMLElement
+            ? oCoreEditor.element
+            : fnById('hc-homewiki-core-editor');
+        return {
+            source: oEditorRoot?.querySelector('textarea') || null,
+            preview: oEditorRoot?.querySelector('.hc-core-editor__preview') || null,
+        };
+    };
+
+    /**
+     * CZ-FUNKCE: Nastaví jednomu panelu editoru proporcionálně stejnou pozici jako má druhý panel.
+     * Vstup: zdrojový a cílový rolovatelný DOM prvek. Výstup: změněná hodnota `scrollTop` cílového prvku.
+     */
+    const fnMirrorEditorScroll = (oSource, oTarget) => {
+        if (!(oSource instanceof HTMLElement) || !(oTarget instanceof HTMLElement)) return;
+        const nSourceMax = Math.max(0, oSource.scrollHeight - oSource.clientHeight);
+        const nTargetMax = Math.max(0, oTarget.scrollHeight - oTarget.clientHeight);
+        const nRatio = nSourceMax > 0 ? Math.min(1, Math.max(0, oSource.scrollTop / nSourceMax)) : 0;
+        oTarget.scrollTop = nTargetMax * nRatio;
+    };
+
+    /**
+     * CZ-FUNKCE: Přesune zdroj i náhled při vstupu do editace na uživatelem zvolený začátek nebo konec stránky.
+     * Vstup: používá per-user nastavení `sEditorOpenPosition`. Výstup: oba panely mají shodnou relativní výchozí pozici.
+     */
+    const fnApplyEditorOpenPosition = () => {
+        const fnApply = () => {
+            const { source: oSource, preview: oPreview } = fnEditorScrollElements();
+            const aPanes = [oSource, oPreview].filter((oPane) => oPane instanceof HTMLElement);
+            if (!aPanes.length) return;
+            bEditorScrollSyncApplying = true;
+            for (const oPane of aPanes) {
+                oPane.scrollTop = sEditorOpenPosition === 'top'
+                    ? 0
+                    : Math.max(0, oPane.scrollHeight - oPane.clientHeight);
+            }
+            window.requestAnimationFrame(() => { bEditorScrollSyncApplying = false; });
+        };
+        // Core může náhled dopočítat až po změně režimu; druhý frame zajistí finální výšku obsahu.
+        window.requestAnimationFrame(() => window.requestAnimationFrame(fnApply));
+    };
+
+    /**
+     * CZ-FUNKCE: Propojí rolování Markdown zdroje a náhledu v obou směrech.
+     * Vstup: scroll event jednoho z panelů. Výstup: při zapnutém nastavení se druhý panel posune na stejnou relativní pozici.
+     */
+    const fnBindEditorScrollSync = () => {
+        const { source: oSource, preview: oPreview } = fnEditorScrollElements();
+        if (!(oSource instanceof HTMLElement) || !(oPreview instanceof HTMLElement)) return;
+        const fnSync = (oFrom, oTo) => {
+            if (!bEditorScrollSyncEnabled || bEditorScrollSyncApplying) return;
+            bEditorScrollSyncApplying = true;
+            fnMirrorEditorScroll(oFrom, oTo);
+            window.requestAnimationFrame(() => { bEditorScrollSyncApplying = false; });
+        };
+        oSource.addEventListener('scroll', () => fnSync(oSource, oPreview), { signal: oLifecycleSignal, passive: true });
+        oPreview.addEventListener('scroll', () => fnSync(oPreview, oSource), { signal: oLifecycleSignal, passive: true });
+    };
+
+    /** CZ-FUNKCE: Zjistí, zda aplikace běží v mobilním rozložení. Vstup: žádný přímý parametr. Výstup: boolean. */
+    const fnIsMobileLayout = () => {
+        const oApp = fnById('hc-homewiki-app');
+        return ['mobile', 'tablet'].includes(String(oApp?.dataset.coreLayout || ''));
+    };
+
+    /** CZ-FUNKCE: Zobrazí nebo skryje mobilní plovoucí paletu editorových nástrojů. Vstup: `bOpen`. Výstup: změna UI stavu. */
+    const fnSetMobileToolbarOpen = (bOpen) => {
+        const oApp = fnById('hc-homewiki-app');
+        const bCanOpen = fnIsMobileLayout() && sEditorMode === 'edit';
+        bMobileToolbarOpen = !!bOpen && bCanOpen;
+        oApp?.classList.toggle('hc-homewiki-mobile-toolbar-open', bMobileToolbarOpen);
+    };
+
+    /** CZ-FUNKCE: Zaktualizuje mobilní UI stav editoru po změně režimu nebo rozložení. Vstup: žádný přímý parametr. Výstup: změna UI stavu. */
+    const fnUpdateMobileEditorUi = () => {
+        const oApp = fnById('hc-homewiki-app');
+        oApp?.classList.toggle('hc-homewiki-edit-mode', sEditorMode === 'edit');
+        if (!fnIsMobileLayout() || sEditorMode !== 'edit') {
+            fnSetMobileToolbarOpen(false);
+        } else {
+            fnSetMobileToolbarOpen(bMobileToolbarOpen);
+        }
+    };
+
     /** CZ-FUNKCE: Přepočítá výšky prvků potřebné pro sticky záhlaví stránky. Vstup: žádný přímý parametr. Výstup: výsledek operace nebo změna aplikačního/UI stavu. */
     const fnSyncStickyHeight = () => {
         const oHead = document.querySelector('.hc-homewiki-page-head');
@@ -286,6 +384,7 @@ const fStartHomeWiki = () => {
             return;
         }
         if (!['read', 'edit', 'preview'].includes(sNewMode)) return;
+        const sPreviousMode = sEditorMode;
         sEditorMode = sNewMode;
         document.querySelectorAll('.hc-homewiki-tab').forEach((oTab) => {
             oTab.classList.toggle('active', (/** @type {any} */ (oTab)).dataset.mode === sNewMode);
@@ -309,6 +408,9 @@ const fStartHomeWiki = () => {
                 ? String(oCurrentPage.content || '') : fnCurrentSource());
         }
         requestAnimationFrame(fnSyncStickyHeight);
+        fnUpdateMobileEditorUi();
+        if (sNewMode === 'edit') window.requestAnimationFrame(fnMergeEditorToolbars);
+        if (sNewMode === 'edit' && sPreviousMode !== 'edit') fnApplyEditorOpenPosition();
     };
 
     /** CZ-FUNKCE: Ukončí režim editace a bezpečně dokončí rozpracované uložení. Vstup: žádný přímý parametr. Výstup: Promise; po dokončení obsahuje výsledek operace nebo potvrzení jejího provedení. */
@@ -450,10 +552,96 @@ const fStartHomeWiki = () => {
         window.requestAnimationFrame(fnSyncStickyHeight);
     };
 
+    /** CZ-FUNKCE: Ověří, zda je stránka z interní historie stále dostupná. Vstup: ID stránky. Výstup: boolean. */
+    const fnPageNavigationTargetAvailable = (sPageId) => aPages.some((oPage) => String(oPage.id) === String(sPageId));
+
+    /** CZ-FUNKCE: Ověří, zda existuje platný krok v interní historii Wiki daným směrem. Vstup: -1 zpět nebo +1 vpřed. Výstup: boolean. */
+    const fnCanNavigatePageHistory = (nDirection) => {
+        for (let nIndex = nPageNavigationIndex + nDirection; nIndex >= 0 && nIndex < aPageNavigationHistory.length; nIndex += nDirection) {
+            if (fnPageNavigationTargetAvailable(aPageNavigationHistory[nIndex])) return true;
+        }
+        return false;
+    };
+
+    /** CZ-FUNKCE: Aktualizuje viditelnost a aktivní stav tlačítek Zpět / Domů / Vpřed. Vstup: žádný. Výstup: změna UI. */
+    const fnUpdatePageNavigation = () => {
+        const oNavigation = fnById('hc-homewiki-page-navigation');
+        const oBack = fnById('hc-homewiki-nav-back');
+        const oHome = fnById('hc-homewiki-nav-home');
+        const oForward = fnById('hc-homewiki-nav-forward');
+        const oMobileNavigation = fnById('hc-homewiki-mobile-page-navigation');
+        const oMobileBack = fnById('hc-homewiki-mobile-nav-back');
+        const oMobileHome = fnById('hc-homewiki-mobile-nav-home');
+        const oMobileForward = fnById('hc-homewiki-mobile-nav-forward');
+        if (!oNavigation || !oBack || !oHome || !oForward) return;
+        const bBackDisabled = !fnCanNavigatePageHistory(-1);
+        const bForwardDisabled = !fnCanNavigatePageHistory(1);
+        const bHomeDisabled = !sEffectiveHomePageId || !fnPageNavigationTargetAvailable(sEffectiveHomePageId)
+            || String(oCurrentPage?.id || '') === sEffectiveHomePageId;
+        oNavigation.hidden = !bPageNavigationEnabled;
+        oBack.disabled = bBackDisabled;
+        oForward.disabled = bForwardDisabled;
+        oHome.disabled = bHomeDisabled;
+        if (oMobileNavigation) oMobileNavigation.hidden = !bPageNavigationEnabled;
+        if (oMobileBack) oMobileBack.disabled = bBackDisabled;
+        if (oMobileForward) oMobileForward.disabled = bForwardDisabled;
+        if (oMobileHome) oMobileHome.disabled = bHomeDisabled;
+    };
+
+    /** CZ-FUNKCE: Zapíše úspěšně otevřenou stránku do interní historie Home Wiki. Vstup: ID stránky. Výstup: změna historie a navigačních tlačítek. */
+    const fnRecordPageNavigation = (sPageId) => {
+        const sId = String(sPageId || '');
+        if (!sId) return;
+        if (nPageNavigationIndex >= 0 && aPageNavigationHistory[nPageNavigationIndex] === sId) {
+            fnUpdatePageNavigation();
+            return;
+        }
+        if (nPageNavigationIndex < aPageNavigationHistory.length - 1) {
+            aPageNavigationHistory = aPageNavigationHistory.slice(0, nPageNavigationIndex + 1);
+        }
+        aPageNavigationHistory.push(sId);
+        if (aPageNavigationHistory.length > 100) aPageNavigationHistory.shift();
+        nPageNavigationIndex = aPageNavigationHistory.length - 1;
+        fnUpdatePageNavigation();
+    };
+
+    /** CZ-FUNKCE: Otevře předchozí nebo následující dostupnou stránku z interní historie Wiki. Vstup: -1 zpět nebo +1 vpřed. Výstup: Promise<boolean>. */
+    const fnNavigatePageHistory = async (nDirection) => {
+        const nOriginalIndex = nPageNavigationIndex;
+        for (let nIndex = nPageNavigationIndex + nDirection; nIndex >= 0 && nIndex < aPageNavigationHistory.length; nIndex += nDirection) {
+            const sTargetId = String(aPageNavigationHistory[nIndex] || '');
+            if (!fnPageNavigationTargetAvailable(sTargetId)) continue;
+            nPageNavigationIndex = nIndex;
+            fnUpdatePageNavigation();
+            const bOpened = await fnOpenPage(sTargetId, false, false, false);
+            if (!bOpened) {
+                nPageNavigationIndex = nOriginalIndex;
+                fnUpdatePageNavigation();
+            }
+            return bOpened;
+        }
+        fnUpdatePageNavigation();
+        return false;
+    };
+
+    /** CZ-FUNKCE: Otevře aktuálně účinnou úvodní stránku uživatele. Vstup: žádný. Výstup: Promise<boolean>. */
+    const fnOpenEffectiveHomePage = async () => {
+        if (!sEffectiveHomePageId || !fnPageNavigationTargetAvailable(sEffectiveHomePageId)) {
+            fnUpdatePageNavigation();
+            return false;
+        }
+        return fnOpenPage(sEffectiveHomePageId);
+    };
+
     /** CZ-FUNKCE: Aplikuje uživatelské nastavení načtené při startu aplikace. Vstup: `oSettings`. Výstup: výsledek operace nebo změna aplikačního/UI stavu. */
     const fnApplyStartupSettings = (oSettings) => {
         if (!oSettings || typeof oSettings !== 'object') return;
         bTreeDragEnabled = !!oSettings.treeDragEnabled;
+        bTreeSharingStateEnabled = !!oSettings.treeSharingStateEnabled;
+        bPageNavigationEnabled = !!oSettings.pageNavigationEnabled;
+        sEditorOpenPosition = String(oSettings.editorOpenPosition || 'bottom') === 'top' ? 'top' : 'bottom';
+        bEditorScrollSyncEnabled = !!oSettings.editorScrollSyncEnabled;
+        sEffectiveHomePageId = String(oSettings.effectiveHomePageId || '');
         sMenuDensity = String(oSettings.menuDensity || 'compact') === 'comfortable' ? 'comfortable' : 'compact';
         sPageHeaderMode = String(oSettings.pageHeaderMode || 'scroll') === 'sticky' ? 'sticky' : 'scroll';
         oSidebarSections = fnNormalizeSidebarSections(oSettings.sidebarSections || oSidebarSections);
@@ -461,6 +649,7 @@ const fStartHomeWiki = () => {
         fnApplyMenuDensity();
         fnApplyPageHeaderMode();
         fnUpdateTreeDragToggle();
+        fnUpdatePageNavigation();
     };
 
     /** CZ-FUNKCE: Uloží příslušný stav pro další použití. Vstup: `oPrevious = null`. Výstup: Promise; po dokončení obsahuje výsledek operace nebo potvrzení jejího provedení. */
@@ -611,6 +800,16 @@ const fStartHomeWiki = () => {
         if (String(oMovedPage.id) === String(oParentPage.id)) return false;
         if (String(oMovedPage.owner_uid) !== String(oParentPage.owner_uid)) return false;
         if (fnIsDescendantOf(String(oParentPage.id), String(oMovedPage.id))) return false;
+        // Changing grants by moving into an inheriting branch requires ownership.
+        if (!oMovedPage.permissions.owner) {
+            const oVisited = new Set();
+            let oAncestor = oParentPage;
+            while (oAncestor && !oVisited.has(String(oAncestor.id))) {
+                if (oAncestor.inherit_sharing) return false;
+                oVisited.add(String(oAncestor.id));
+                oAncestor = aPages.find((oCandidate) => String(oCandidate.id) === String(oAncestor.parent_id));
+            }
+        }
         return true;
     };
 
@@ -732,6 +931,9 @@ const fStartHomeWiki = () => {
             if (sParentId) oCollapsedPageIds.delete(String(sParentId));
             fnPersistCollapsedTreeState();
             await fnLoadPages();
+            if (oSaved.sharePropagation?.skipped) {
+                oCore.notifications.warning(t(sAppId, 'Some subpages could not inherit permissions. Review subtree sharing.'));
+            }
             oCore.notifications.success(t(sAppId, 'Page moved in the tree.'), {
                 dedupeKey: 'hc_homewiki:tree-move',
                 cooldownMs: 700,
@@ -797,6 +999,149 @@ const fStartHomeWiki = () => {
         if (bCommit && sMovedId && oTarget) {
             await fnMovePageByDrag(sMovedId, String(oTarget.parentId || ''));
         }
+    };
+
+    /**
+     * CZ-FUNKCE: Převede oprávnění stránky nebo ACL položky na jednotnou sadu práv.
+     * Vstup: `oSource` s poli read/edit/delete/share nebo canRead/canEdit/canDelete/canShare, `bAcl` určuje formát ACL.
+     * Výstup: objekt `{ read, edit, delete, share }` s boolean hodnotami.
+     */
+    const fnSharingPermissionSet = (oSource, bAcl = false) => ({
+        read: !!(bAcl ? oSource?.canRead : oSource?.read),
+        edit: !!(bAcl ? oSource?.canEdit : oSource?.edit),
+        delete: !!(bAcl ? oSource?.canDelete : oSource?.delete),
+        share: !!(bAcl ? oSource?.canShare : oSource?.share),
+    });
+
+    /**
+     * CZ-FUNKCE: Vytvoří lokalizovaný textový seznam aktivních oprávnění.
+     * Vstup: objekt práv `{ read, edit, delete, share }`.
+     * Výstup: text jako „Číst, Upravit“; při prázdné sadě vrací pomlčku.
+     */
+    const fnSharingPermissionText = (oPermissions) => {
+        const aLabels = [];
+        if (oPermissions.read) aLabels.push(t(sAppId, 'Read'));
+        if (oPermissions.edit) aLabels.push(t(sAppId, 'Edit'));
+        if (oPermissions.delete) aLabels.push(t(sAppId, 'Delete'));
+        if (oPermissions.share) aLabels.push(t(sAppId, 'Share further'));
+        return aLabels.length ? aLabels.join(', ') : '—';
+    };
+
+    /**
+     * CZ-FUNKCE: Vytvoří krátkou vizuální reprezentaci oprávnění vhodnou do úzkého stromu stránek.
+     * Vstup: objekt práv `{ read, edit, delete, share }`.
+     * Výstup: text se symboly oprávnění; jednotlivé symboly mají význam číst/upravit/smazat/dále sdílet.
+     */
+    const fnSharingPermissionGlyphs = (oPermissions) => {
+        const aGlyphs = [];
+        if (oPermissions.read) aGlyphs.push('👁');
+        if (oPermissions.edit) aGlyphs.push('✎');
+        if (oPermissions.delete) aGlyphs.push('🗑');
+        if (oPermissions.share) aGlyphs.push('↗');
+        return aGlyphs.join('');
+    };
+
+    /**
+     * CZ-FUNKCE: Vrátí stabilní klíč sady oprávnění pro porovnání více ACL položek.
+     * Vstup: objekt práv `{ read, edit, delete, share }`.
+     * Výstup: čtyřznakový klíč složený z 0/1.
+     */
+    const fnSharingPermissionKey = (oPermissions) => [
+        oPermissions.read, oPermissions.edit, oPermissions.delete, oPermissions.share,
+    ].map((bValue) => bValue ? '1' : '0').join('');
+
+    /**
+     * CZ-FUNKCE: Vytvoří kompaktní stav sdílení stránky pro zobrazení přímo ve stromu.
+     * Vstup: objekt stránky včetně visibility, permissions, allPermissions, acl a inherit_sharing.
+     * Výstup: DOM prvek s viditelným stavem a přesným tooltipem; nikdy nemění oprávnění ani data stránky.
+     */
+    const fnCreateTreeSharingState = (oPage) => {
+        const sVisibility = String(oPage?.visibility || 'private');
+        const bOwner = !!oPage?.permissions?.owner;
+        const aAcl = Array.isArray(oPage?.acl) ? oPage.acl : [];
+        const oState = document.createElement('small');
+        oState.className = 'hc-homewiki-tree-sharing-state';
+        oState.dataset.visibility = sVisibility;
+
+        const aTitle = [];
+        const oVisibility = document.createElement('span');
+        oVisibility.className = 'hc-homewiki-tree-sharing-visibility';
+        oVisibility.setAttribute('aria-hidden', 'true');
+
+        const oRights = document.createElement('span');
+        oRights.className = 'hc-homewiki-tree-sharing-rights';
+        oRights.setAttribute('aria-hidden', 'true');
+
+        if (sVisibility === 'private') {
+            oVisibility.textContent = '🔒';
+            aTitle.push(t(sAppId, 'Private'));
+            oState.append(oVisibility);
+        } else if (sVisibility === 'all') {
+            oVisibility.textContent = '🌐';
+            const oPermissions = bOwner
+                ? fnSharingPermissionSet(oPage.allPermissions || {})
+                : fnSharingPermissionSet(oPage.permissions || {});
+            oRights.textContent = fnSharingPermissionGlyphs(oPermissions);
+            aTitle.push(t(sAppId, 'All Nextcloud users') + ': ' + fnSharingPermissionText(oPermissions));
+
+            if (bOwner && aAcl.length) {
+                aTitle.push(t(sAppId, 'Individual permission extensions'));
+                for (const oEntry of aAcl) {
+                    const sSubjectGlyph = oEntry.type === 'group' ? '👥' : '👤';
+                    aTitle.push(sSubjectGlyph + ' ' + String(oEntry.id || '') + ': '
+                        + fnSharingPermissionText(fnSharingPermissionSet(oEntry, true)));
+                }
+                const oExtensions = document.createElement('span');
+                oExtensions.className = 'hc-homewiki-tree-sharing-extensions';
+                oExtensions.textContent = '+👥' + String(aAcl.length);
+                oExtensions.setAttribute('aria-hidden', 'true');
+                oState.append(oVisibility, oRights, oExtensions);
+            } else {
+                oState.append(oVisibility, oRights);
+            }
+        } else {
+            oVisibility.textContent = '👥';
+            if (bOwner) {
+                aTitle.push(t(sAppId, 'Selected users and groups'));
+                const aProfiles = aAcl.map((oEntry) => fnSharingPermissionSet(oEntry, true));
+                const aProfileKeys = Array.from(new Set(aProfiles.map(fnSharingPermissionKey)));
+                if (aAcl.length === 1 || (aAcl.length > 1 && aProfileKeys.length === 1)) {
+                    oRights.textContent = aProfiles.length ? fnSharingPermissionGlyphs(aProfiles[0]) : '';
+                } else if (aAcl.length > 1) {
+                    oRights.textContent = '≠';
+                }
+                const oCount = document.createElement('span');
+                oCount.className = 'hc-homewiki-tree-sharing-count';
+                oCount.textContent = String(aAcl.length);
+                oCount.setAttribute('aria-hidden', 'true');
+                oState.append(oVisibility, oCount, oRights);
+
+                for (const oEntry of aAcl) {
+                    const sSubjectGlyph = oEntry.type === 'group' ? '👥' : '👤';
+                    aTitle.push(sSubjectGlyph + ' ' + String(oEntry.id || '') + ': '
+                        + fnSharingPermissionText(fnSharingPermissionSet(oEntry, true)));
+                }
+            } else {
+                const oPermissions = fnSharingPermissionSet(oPage.permissions || {});
+                oRights.textContent = fnSharingPermissionGlyphs(oPermissions);
+                oState.append(oVisibility, oRights);
+                aTitle.push(t(sAppId, 'Shared with you') + ': ' + fnSharingPermissionText(oPermissions));
+            }
+        }
+
+        if (oPage?.inherit_sharing) {
+            const oSubtree = document.createElement('span');
+            oSubtree.className = 'hc-homewiki-tree-sharing-subtree';
+            oSubtree.textContent = '⇣';
+            oSubtree.setAttribute('aria-hidden', 'true');
+            oState.append(oSubtree);
+            aTitle.push(t(sAppId, 'Keep the same permissions throughout this subtree'));
+        }
+
+        const sTitle = aTitle.filter(Boolean).join('\n');
+        oState.title = sTitle;
+        oState.setAttribute('aria-label', sTitle.replace(/\n/g, '. '));
+        return oState;
     };
 
     /** CZ-FUNKCE: Vytvoří jeden DOM řádek stránky v navigačním stromu. Vstup: `oPage`, `oOptions = {}`. Výstup: DOM prvek řádku. */
@@ -915,12 +1260,8 @@ const fStartHomeWiki = () => {
         }
         oButton.append(oIcon, oText);
 
-        if (!oPage.permissions.owner) {
-            const oShared = document.createElement('small');
-            oShared.className = 'hc-homewiki-shared-indicator';
-            oShared.textContent = '↗';
-            oShared.title = t(sAppId, 'Shared with you');
-            oButton.append(oShared);
+        if (bTree && bTreeSharingStateEnabled) {
+            oButton.append(fnCreateTreeSharingState(oPage));
         }
 
         oButton.addEventListener('click', () => void fnOpenPage(String(oPage.id)));
@@ -1347,6 +1688,106 @@ const fStartHomeWiki = () => {
             });
             oMenu.append(oButton);
         }
+    };
+
+
+    /**
+     * CZ-FUNKCE: Otevře jedinou kompletní nabídku funkcí používanou na telefonu a tabletu.
+     * Vstup: kotevní tlačítko `oAnchor`. Výstup: mobilní paleta se všemi běžnými akcemi Wiki a aktuální stránky.
+     */
+    const fnOpenMobileActions = (oAnchor) => {
+        const oMenu = fnById('hc-homewiki-app-menu');
+        if (!oMenu) return;
+        if (!oMenu.hidden && oAppMenuReturnFocus === oAnchor) { fnCloseAppMenu(); return; }
+        fnClosePageMenu();
+        fnCloseAppMenu();
+        fnSetMobileToolbarOpen(false);
+        oAppMenuReturnFocus = oAnchor;
+        oAnchor.setAttribute('aria-expanded', 'true');
+        oMenu.replaceChildren();
+
+        const fnAdd = (sLabel, fnAction, bEnabled = true, sClassName = '') => {
+            const oButton = document.createElement('button');
+            oButton.type = 'button';
+            oButton.setAttribute('role', 'menuitem');
+            oButton.textContent = sLabel;
+            oButton.disabled = !bEnabled;
+            if (sClassName) oButton.classList.add(sClassName);
+            oButton.addEventListener('click', () => {
+                fnCloseAppMenu();
+                if (bEnabled) void Promise.resolve(fnAction());
+            });
+            oMenu.append(oButton);
+        };
+        const fnSeparator = () => {
+            const oSeparator = document.createElement('div');
+            oSeparator.className = 'hc-homewiki-menu-separator';
+            oMenu.append(oSeparator);
+        };
+        const fnHeading = (sLabel) => {
+            const oHeading = document.createElement('div');
+            oHeading.className = 'hc-homewiki-menu-heading';
+            oHeading.textContent = sLabel;
+            oMenu.append(oHeading);
+        };
+        const fnWithSavedPage = async (fnAction) => {
+            if (!oCurrentPage) return;
+            if (bDirty && !(await fnSave())) return;
+            await fnAction();
+        };
+
+        fnHeading(t(sAppId, 'Wiki tools'));
+        fnAdd('☰ ' + t(sAppId, 'Navigation'), () => fnSetSidebar(true, oAnchor));
+        fnAdd('＋ ' + t(sAppId, 'Create page'), () => fnCreatePage());
+
+        if (oCurrentPage) {
+            fnSeparator();
+            fnHeading(t(sAppId, 'Page actions'));
+
+            if (sEditorMode === 'read' && oCurrentPage.permissions?.edit) {
+                fnAdd('✏️ ' + t(sAppId, 'Edit page'), () => { fnSetMode('edit'); oCoreEditor?.focus(); });
+            } else if (sEditorMode !== 'read') {
+                fnAdd('✓ ' + t(sAppId, 'View page'), () => fnFinishEditing());
+            }
+            if (sEditorMode === 'edit') {
+                fnAdd('👁 ' + t(sAppId, 'Preview'), () => fnSetMode('preview'));
+            } else if (sEditorMode === 'preview' && oCurrentPage.permissions?.edit) {
+                fnAdd('✎ ' + t(sAppId, 'Editor'), () => { fnSetMode('edit'); oCoreEditor?.focus(); });
+            }
+
+            fnAdd('✏ ' + t(sAppId, 'Rename page'), () => fnWithSavedPage(() => fnRenamePage()), !!oCurrentPage.permissions?.edit);
+            fnAdd('↳ ' + t(sAppId, 'Place page under'), () => fnWithSavedPage(() => fnAssignParent()), !!oCurrentPage.permissions?.edit);
+            fnAdd((oCurrentPage.pinned ? '★ ' : '☆ ') + (oCurrentPage.pinned ? t(sAppId, 'Unpin page') : t(sAppId, 'Pin page')),
+                () => fnWithSavedPage(() => fnTogglePin()), !!oCurrentPage.permissions?.edit);
+            fnAdd('👥 ' + t(sAppId, 'Sharing and permissions'), () => fnWithSavedPage(() => fnOpenShare()), !!oCurrentPage.permissions?.share);
+            fnAdd('⇄ ' + t(sAppId, 'Transfer ownership'), () => fnWithSavedPage(() => fnOpenTransferOwnership()), !!oCurrentPage.permissions?.owner);
+            fnAdd('🕘 ' + t(sAppId, 'Version history'), () => fnWithSavedPage(() => fnOpenHistory()), !!oCurrentPage.permissions?.edit);
+            fnAdd('📎 ' + t(sAppId, 'Attachments'), () => fnWithSavedPage(() => fnOpenAttachments()));
+            fnAdd('🏷 ' + t(sAppId, 'Tags'), () => fnWithSavedPage(() => fnOpenPageTags()), !!oCurrentPage.permissions?.owner);
+            fnAdd('⇩ ' + t(sAppId, 'Export Markdown'), () => {
+                window.location.href = OC.generateUrl('/apps/' + sAppId + '/api/pages/' + encodeURIComponent(String(oCurrentPage.id)) + '/export');
+            });
+            fnAdd('🗑 ' + t(sAppId, 'Move to trash'), () => fnWithSavedPage(() => fnDeletePage()), !!oCurrentPage.permissions?.delete, 'danger');
+        }
+
+        fnSeparator();
+        fnHeading(t(sAppId, 'Wiki menu'));
+        fnAdd('⚙ ' + t(sAppId, 'Wiki settings'), () => fnOpenSettings());
+        fnAdd('🏷 ' + t(sAppId, 'Manage tags'), () => fnOpenTagManager());
+        fnAdd('🗑 ' + t(sAppId, 'Trash'), () => fnOpenTrash());
+        fnAdd('ⓘ ' + t(sAppId, 'About'), () => fnOpenAbout());
+
+        fnSeparator();
+        fnHeading(t(sAppId, 'Wiki management'));
+        const sCurrentUid = String(OC?.getCurrentUser?.()?.uid || '');
+        const bHasOwnedPages = aPages.some((oPage) => String(oPage.owner_uid || '') === sCurrentUid);
+        fnAdd('⇩ ' + t(sAppId, 'Export entire Wiki'), () => fnExportWholeWiki(), bHasOwnedPages);
+        fnAdd('⇧ ' + t(sAppId, 'Import Wiki'), () => fnOpenWikiImport());
+        fnAdd('⚠ ' + t(sAppId, 'Delete entire Wiki'), () => fnOpenWholeWikiDelete(), true, 'hc-homewiki-menu-danger');
+
+        oMenu.hidden = false;
+        fnPositionMenu(oMenu, oAnchor, 320);
+        oMenu.querySelector('button:not(:disabled)')?.focus();
     };
 
     /** CZ-FUNKCE: Otevře hlavní nabídku Home Wiki u zadané kotvy. Vstup: `oAnchor`. Výstup: výsledek operace nebo změna aplikačního/UI stavu. */
@@ -2021,6 +2462,7 @@ const fStartHomeWiki = () => {
             ['parent', t(sAppId, 'Place page under'), !!oPage.permissions.edit],
             ['pin', oPage.pinned ? t(sAppId, 'Unpin page') : t(sAppId, 'Pin page'), !!oPage.permissions.edit],
             ['share', t(sAppId, 'Sharing and permissions'), !!oPage.permissions.share],
+            ['transfer', t(sAppId, 'Transfer ownership'), !!oPage.permissions.owner],
             ['history', t(sAppId, 'Version history'), !!oPage.permissions.edit],
             ['attachments', t(sAppId, 'Attachments'), true],
             ['tags', t(sAppId, 'Tags'), !!oPage.permissions.owner],
@@ -2043,6 +2485,7 @@ const fStartHomeWiki = () => {
                 else if (sAction === 'parent') fnAssignParent();
                 else if (sAction === 'pin') await fnTogglePin();
                 else if (sAction === 'share') fnOpenShare();
+                else if (sAction === 'transfer') fnOpenTransferOwnership();
                 else if (sAction === 'history') await fnOpenHistory();
                 else if (sAction === 'attachments') await fnOpenAttachments();
                 else if (sAction === 'tags') await fnOpenPageTags();
@@ -2259,6 +2702,7 @@ const fStartHomeWiki = () => {
         if (bCollapsedChanged) fnPersistCollapsedTreeState();
         if (oCurrentPage?.id) fnRevealPageInTree(String(oCurrentPage.id));
         fnRenderNav();
+        fnUpdatePageNavigation();
 
         if (!bInitialNavigationDone) {
             bInitialNavigationDone = true;
@@ -2435,7 +2879,7 @@ const fStartHomeWiki = () => {
     };
 
     /** CZ-FUNKCE: Načte a otevře vybranou Wiki stránku. Vstup: `sPageId`, `bFocusEditor = false`, `bForceReload = false`. Výstup: Promise; po dokončení obsahuje výsledek operace nebo potvrzení jejího provedení. */
-    const fnOpenPage = async (sPageId, bFocusEditor = false, bForceReload = false) => {
+    const fnOpenPage = async (sPageId, bFocusEditor = false, bForceReload = false, bRecordNavigation = !bForceReload) => {
         const sModeBeforeLoad = sEditorMode;
         try {
             if (!bForceReload && oCurrentPage?.id === sPageId && !bLoadingPage) {
@@ -2443,6 +2887,8 @@ const fStartHomeWiki = () => {
                     fnSetMode('edit');
                     oCoreEditor?.focus();
                 }
+                if (bRecordNavigation) fnRecordPageNavigation(String(sPageId));
+                else fnUpdatePageNavigation();
                 return true;
             }
             if (bForceReload) {
@@ -2533,6 +2979,8 @@ const fStartHomeWiki = () => {
             fnUpdateToolbar();
             bLoadingPage = false;
             fnStartRevisionWatch();
+            if (bRecordNavigation) fnRecordPageNavigation(String(oCurrentPage.id));
+            else fnUpdatePageNavigation();
             void fnRecordPageVisit(String(oCurrentPage.id));
             if (bFocusEditor && oCurrentPage.permissions.edit) requestAnimationFrame(() => oCoreEditor?.focus());
             return true;
@@ -2892,6 +3340,21 @@ const fStartHomeWiki = () => {
         disabled: !oCurrentPage?.permissions.edit, onClick: () => fnSave(),
     }];
 
+    /**
+     * CZ-FUNKCE: Sloučí aplikační akce Home Wiki s hlavním toolbarem editoru Shared App Core.
+     * Vstup: existující DOM editoru a aplikační toolbar. Výstup: jeden společný toolbar; původní pomocný řádek zůstane skrytý.
+     */
+    const fnMergeEditorToolbars = () => {
+        const oCustomToolbar = fnById('hc-homewiki-toolbar');
+        const oLegacyRow = fnById('hc-homewiki-editor-toolbar-row');
+        const oCoreToolbar = fnById('hc-homewiki-core-editor')?.querySelector('.hc-core-editor__toolbar');
+        if (!(oCustomToolbar instanceof HTMLElement) || !(oCoreToolbar instanceof HTMLElement)) return false;
+        oCustomToolbar.classList.add('hc-homewiki-toolbar-inline-actions');
+        if (oCustomToolbar.parentElement !== oCoreToolbar) oCoreToolbar.prepend(oCustomToolbar);
+        if (oLegacyRow) oLegacyRow.hidden = true;
+        return true;
+    };
+
     /** CZ-FUNKCE: Aktualizuje stav a dostupnost editorového toolbaru. Vstup: žádný přímý parametr. Výstup: výsledek operace nebo změna aplikačního/UI stavu. */
     const fnUpdateToolbar = () => {
         oToolbarController?.update(fnToolbarActions());
@@ -2978,6 +3441,128 @@ const fStartHomeWiki = () => {
         }
     };
 
+    /** Owner-only permanent ownership transfer dialog with a second confirmation. */
+    const fnOpenTransferOwnership = () => {
+        if (!oCurrentPage?.permissions.owner) return;
+        const sPageId = String(oCurrentPage.id);
+        const nRevision = Number(oCurrentPage.revision || 0);
+        const nDescendants = aPages.filter((oPage) => String(oPage.owner_uid) === String(oCurrentPage.owner_uid)
+            && String(oPage.id) !== sPageId && fnIsDescendantOf(String(oPage.id), sPageId)).length;
+        let sTargetUid = '';
+        const oContent = document.createElement('div');
+        oContent.className = 'hc-homewiki-share-content';
+        const oWarning = document.createElement('p');
+        oWarning.textContent = t(sAppId, 'Transfer ownership permanently gives the selected user full control. The pages disappear from your Wiki and cannot be taken back. Existing shares will be reset to private.');
+        const oPickerHost = document.createElement('div');
+        oPickerHost.className = 'hc-homewiki-share-picker';
+        const oScopeLabel = document.createElement('label');
+        oScopeLabel.textContent = t(sAppId, 'Transfer scope');
+        const oScopeSelect = document.createElement('select');
+        for (const [sValue, sLabel] of [['single', t(sAppId, 'This page only')], ['subtree', t(sAppId, 'This page and entire subtree')]]) {
+            const oOption = document.createElement('option');
+            oOption.value = sValue;
+            oOption.textContent = sLabel;
+            oScopeSelect.append(oOption);
+        }
+        oScopeSelect.value = nDescendants ? 'subtree' : 'single';
+        if (!nDescendants) oScopeSelect.disabled = true;
+        oScopeLabel.append(oScopeSelect);
+        const oPasswordLabel = document.createElement('label');
+        const oPasswordText = document.createElement('span');
+        oPasswordText.textContent = t(sAppId, 'Current Nextcloud password');
+        const oPasswordInput = document.createElement('input');
+        oPasswordInput.type = 'password';
+        oPasswordInput.autocomplete = 'current-password';
+        oPasswordLabel.append(oPasswordText, oPasswordInput);
+        const oPasswordHelp = document.createElement('small');
+        oPasswordHelp.textContent = t(sAppId, 'For this destructive operation, your current Nextcloud password is required every time.');
+        oContent.append(oWarning, oPickerHost, oScopeLabel, oPasswordLabel, oPasswordHelp);
+        const oPicker = oCore.picker.create(oPickerHost, {
+            endpoint: OC.generateUrl('/apps/' + sAppId + '/api/users'),
+            types: ['user'],
+            multiple: false,
+            placeholder: t(sAppId, 'Select new owner'),
+            selected: [],
+            onChange: (aSelected) => {
+                const oSelected = Array.isArray(aSelected) ? aSelected[0] : aSelected;
+                sTargetUid = oSelected?.type === 'user' ? String(oSelected.id || '') : '';
+            },
+        });
+        let oDialog = null;
+        oDialog = oCore.dialogs.open({
+            title: t(sAppId, 'Transfer ownership'),
+            content: oContent,
+            size: 'medium',
+            actions: [
+                { label: t(sAppId, 'Cancel') },
+                {
+                    label: t(sAppId, 'Transfer ownership'),
+                    variant: 'danger',
+                    close: false,
+                    onClick: async () => {
+                        if (!sTargetUid || sTargetUid === String(oCurrentPage?.owner_uid || '')) {
+                            oCore.notifications.warning(t(sAppId, 'Select another Nextcloud user.'));
+                            return;
+                        }
+                        let sPassword = String(oPasswordInput.value || '');
+                        if (!sPassword) {
+                            oCore.notifications.error(t(sAppId, 'Enter your current Nextcloud password.'));
+                            oPasswordInput.focus();
+                            return;
+                        }
+                        const bConfirmed = await oCore.dialogs.confirm({
+                            title: t(sAppId, 'Confirm permanent ownership transfer'),
+                            message: t(sAppId, 'Transfer page “{name}” to {user}? You will lose ownership and access unless the recipient shares it with you again.', {
+                                name: String(oCurrentPage.title), user: sTargetUid,
+                            }),
+                            confirmLabel: t(sAppId, 'Transfer permanently'),
+                            cancelLabel: t(sAppId, 'Cancel'),
+                            destructive: true,
+                        });
+                        if (!bConfirmed) { sPassword = ''; return; }
+                        try {
+                            const sUid = String(OC?.getCurrentUser?.()?.uid || '');
+                            if (!sUid) throw new Error(t(sAppId, 'Current user is not available.'));
+                            const aAuthBytes = new TextEncoder().encode(sUid + ':' + sPassword);
+                            let sAuthBinary = '';
+                            for (const nByte of aAuthBytes) sAuthBinary += String.fromCharCode(nByte);
+                            const sAuthorization = 'Basic ' + btoa(sAuthBinary);
+                            oPasswordInput.value = '';
+                            sPassword = '';
+                            const oResult = await fnApi('/api/pages/' + encodeURIComponent(sPageId) + '/transfer', {
+                                method: 'POST',
+                                headers: { Authorization: sAuthorization },
+                                body: JSON.stringify({
+                                    targetUid: sTargetUid,
+                                    scope: oScopeSelect.value,
+                                    expectedRevision: nRevision,
+                                }),
+                            });
+                            oDialog?.close('transferred');
+                            oCurrentPage = null;
+                            fnStopRevisionWatch();
+                            bDirty = false;
+                            await fnLoadPages();
+                            if (aPages.length) await fnOpenPage(String(aPages[0].id));
+                            else fnRender();
+                            if (oResult.sourceCleanupPending?.length) {
+                                oCore.notifications.warning(t(sAppId, 'Ownership transferred, but old file cleanup needs administrator attention.'));
+                            } else {
+                                oCore.notifications.success(t(sAppId, 'Ownership transferred: {count} pages.', { count: Number(oResult.transferred || 0) }));
+                            }
+                        } catch (oError) {
+                            sPassword = '';
+                            if (Number(oError?.status || 0) === 412 || Number(oError?.status || 0) === 403) {
+                                oCore.notifications.error(t(sAppId, 'Incorrect password or missing permission. Ownership was not transferred.'));
+                            } else fnNotifyError(oError);
+                        }
+                    },
+                },
+            ],
+            onClose: () => oPicker?.destroy(),
+        });
+    };
+
     /** CZ-FUNKCE: Otevře dialog sdílení a oprávnění stránky. Vstup: žádný přímý parametr. Výstup: výsledek operace nebo změna aplikačního/UI stavu. */
     const fnOpenShare = () => {
         if (!oCurrentPage?.permissions.share) {
@@ -3052,9 +3637,10 @@ const fStartHomeWiki = () => {
         const oDescendantLabel = document.createElement('label');
         const oDescendantInput = document.createElement('input');
         oDescendantInput.type = 'checkbox';
-        oDescendantLabel.append(oDescendantInput, document.createTextNode(' ' + t(sAppId, 'Apply the same sharing and permissions to all existing subpages')));
+        oDescendantInput.checked = !!oCurrentPage.inherit_sharing;
+        oDescendantLabel.append(oDescendantInput, document.createTextNode(' ' + t(sAppId, 'Keep the same permissions throughout this subtree')));
         const oDescendantHelp = document.createElement('small');
-        oDescendantHelp.textContent = t(sAppId, 'This is a one-time update of current descendants. Future subpages keep their own sharing settings.');
+        oDescendantHelp.textContent = t(sAppId, 'When enabled, existing, newly created and moved-in subpages inherit these permissions. Moving this subtree under another inherited-sharing branch adopts its permissions.');
         oDescendantBlock.append(oDescendantLabel, oDescendantHelp);
 
         oContent.append(oVisibilityLabel, oPrivateInfo, oGlobalBlock, oSpecificDetails, oDescendantBlock);
@@ -3154,6 +3740,7 @@ const fStartHomeWiki = () => {
                                         canShare: !!oEntry.canShare,
                                     })),
                                     applyToDescendants: oDescendantInput.checked,
+                                    inheritSharing: oDescendantInput.checked,
                                 }, Number(oCurrentPage.revision || 1))),
                             });
                             Object.assign(oCurrentPage, oSavedPage);
@@ -3222,16 +3809,43 @@ const fStartHomeWiki = () => {
                 return oSelect;
             };
 
+            /**
+             * CZ-FUNKCE: Vytvoří vizuálně oddělenou skupinu souvisejících voleb v dialogu nastavení.
+             * Vstup: lokalizovaný název `sTitle` a volitelný vysvětlující text `sHint`.
+             * Výstup: DOM sekce s připraveným tělem `body` pro jednotlivé ovládací prvky.
+             */
+            const fnSettingsGroup = (sTitle, sHint = '') => {
+                const oSection = document.createElement('section');
+                oSection.className = 'hc-homewiki-settings-group';
+                const oHeader = document.createElement('div');
+                oHeader.className = 'hc-homewiki-settings-group-header';
+                const oTitle = document.createElement('strong');
+                oTitle.textContent = sTitle;
+                oHeader.append(oTitle);
+                if (sHint) {
+                    const oHint = document.createElement('small');
+                    oHint.textContent = sHint;
+                    oHeader.append(oHint);
+                }
+                const oBody = document.createElement('div');
+                oBody.className = 'hc-homewiki-settings-group-body';
+                oSection.append(oHeader, oBody);
+                return { section: oSection, body: oBody };
+            };
+
+            const oStartGroup = fnSettingsGroup(
+                t(sAppId, 'Start page'),
+                t(sAppId, 'Choose which page opens when Home Wiki starts.'),
+            );
             const oPersonalLabel = document.createElement('label');
             const oPersonalText = document.createElement('span');
             oPersonalText.textContent = t(sAppId, 'My start page');
             const oPersonal = fnPageSelect(oSettings.personalHomePageId);
             oPersonalLabel.append(oPersonalText, oPersonal);
-            oContent.append(oPersonalLabel);
+            oStartGroup.body.append(oPersonalLabel);
+            oContent.append(oStartGroup.section);
 
-            const oAppearanceSeparator = document.createElement('hr');
-            const oAppearanceTitle = document.createElement('strong');
-            oAppearanceTitle.textContent = t(sAppId, 'Appearance');
+            const oAppearanceGroup = fnSettingsGroup(t(sAppId, 'Appearance'));
             const oMenuDensityLabel = document.createElement('label');
             const oMenuDensityText = document.createElement('span');
             oMenuDensityText.textContent = t(sAppId, 'Menu and tree density');
@@ -3267,19 +3881,61 @@ const fStartHomeWiki = () => {
             oPageHeaderLabel.append(oPageHeaderText, oPageHeaderMode);
             const oPageHeaderHint = document.createElement('small');
             oPageHeaderHint.textContent = t(sAppId, 'The page header keeps the title, visibility, date, tags, attachments and page actions together on one line.');
+            oAppearanceGroup.body.append(oMenuDensityLabel, oMenuDensityHint, oPageHeaderLabel, oPageHeaderHint);
+            oContent.append(oAppearanceGroup.section);
 
-            oContent.append(
-                oAppearanceSeparator,
-                oAppearanceTitle,
-                oMenuDensityLabel,
-                oMenuDensityHint,
-                oPageHeaderLabel,
-                oPageHeaderHint,
+            const oEditorGroup = fnSettingsGroup(
+                t(sAppId, 'Editor'),
+                t(sAppId, 'Controls the initial position and scrolling behavior while editing.'),
             );
+            const oEditorOpenPositionLabel = document.createElement('label');
+            const oEditorOpenPositionText = document.createElement('span');
+            oEditorOpenPositionText.textContent = t(sAppId, 'Position when editing starts');
+            const oEditorOpenPosition = document.createElement('select');
+            for (const [sValue, sLabel] of [
+                ['bottom', t(sAppId, 'Bottom of page')],
+                ['top', t(sAppId, 'Top of page')],
+            ]) {
+                const oOption = document.createElement('option');
+                oOption.value = sValue;
+                oOption.textContent = sLabel;
+                oEditorOpenPosition.append(oOption);
+            }
+            oEditorOpenPosition.value = String(oSettings.editorOpenPosition || 'bottom') === 'top' ? 'top' : 'bottom';
+            oEditorOpenPositionLabel.append(oEditorOpenPositionText, oEditorOpenPosition);
+            const oEditorOpenPositionHint = document.createElement('small');
+            oEditorOpenPositionHint.textContent = t(sAppId, 'Choose whether source and preview open at the beginning or at the end of the page.');
 
-            const oTreeSeparator = document.createElement('hr');
-            const oTreeTitle = document.createElement('strong');
-            oTreeTitle.textContent = t(sAppId, 'Page tree');
+            const oEditorScrollSyncLabel = document.createElement('label');
+            oEditorScrollSyncLabel.className = 'hc-homewiki-settings-check';
+            const oEditorScrollSync = document.createElement('input');
+            oEditorScrollSync.type = 'checkbox';
+            oEditorScrollSync.checked = !!oSettings.editorScrollSyncEnabled;
+            oEditorScrollSyncLabel.append(oEditorScrollSync, document.createTextNode(' ' + t(sAppId, 'Synchronize source and preview scrolling')));
+            const oEditorScrollSyncHint = document.createElement('small');
+            oEditorScrollSyncHint.textContent = t(sAppId, 'When enabled, scrolling either pane moves the other pane to the same relative position. Disabled by default.');
+            oEditorGroup.body.append(oEditorOpenPositionLabel, oEditorOpenPositionHint, oEditorScrollSyncLabel, oEditorScrollSyncHint);
+            oContent.append(oEditorGroup.section);
+
+            const oNavigationGroup = fnSettingsGroup(
+                t(sAppId, 'Navigation'),
+                t(sAppId, 'Controls optional navigation elements above the current page.'),
+            );
+            const oPageNavigationLabel = document.createElement('label');
+            oPageNavigationLabel.className = 'hc-homewiki-settings-check';
+            const oPageNavigation = document.createElement('input');
+            oPageNavigation.type = 'checkbox';
+            oPageNavigation.checked = !!oSettings.pageNavigationEnabled;
+            oPageNavigationLabel.append(oPageNavigation, document.createTextNode(' ' + t(sAppId, 'Show page navigation')));
+            const oPageNavigationHint = document.createElement('small');
+            oPageNavigationHint.textContent = t(sAppId, 'Shows Back, Home and Forward buttons above the page. Disabled by default.');
+            oNavigationGroup.body.append(oPageNavigationLabel, oPageNavigationHint);
+            oContent.append(oNavigationGroup.section);
+
+            const oTreeGroup = fnSettingsGroup(
+                t(sAppId, 'Page tree'),
+                t(sAppId, 'Controls how the page tree behaves and what additional information it displays.'),
+            );
             const oTreeDragLabel = document.createElement('label');
             oTreeDragLabel.className = 'hc-homewiki-settings-check';
             const oTreeDrag = document.createElement('input');
@@ -3288,16 +3944,22 @@ const fStartHomeWiki = () => {
             oTreeDragLabel.append(oTreeDrag, document.createTextNode(' ' + t(sAppId, 'Enable drag-and-drop tree organization')));
             const oTreeHint = document.createElement('small');
             oTreeHint.textContent = t(sAppId, 'Keep this disabled when the page tree is stable to prevent accidental moves.');
-            oContent.append(oTreeSeparator, oTreeTitle, oTreeDragLabel, oTreeHint);
+
+            const oTreeSharingLabel = document.createElement('label');
+            oTreeSharingLabel.className = 'hc-homewiki-settings-check';
+            const oTreeSharing = document.createElement('input');
+            oTreeSharing.type = 'checkbox';
+            oTreeSharing.checked = !!oSettings.treeSharingStateEnabled;
+            oTreeSharingLabel.append(oTreeSharing, document.createTextNode(' ' + t(sAppId, 'Show sharing permissions in the page tree')));
+            const oTreeSharingHint = document.createElement('small');
+            oTreeSharingHint.textContent = t(sAppId, 'Shows visibility and sharing rights next to each page. Disabled by default.');
+            oTreeGroup.body.append(oTreeDragLabel, oTreeHint, oTreeSharingLabel, oTreeSharingHint);
+            oContent.append(oTreeGroup.section);
 
             let oAdminPage = null;
             let oAdminScope = null;
             if (oSettings.isAdmin) {
-                const oSeparator = document.createElement('hr');
-                oContent.append(oSeparator);
-                const oAdminTitle = document.createElement('strong');
-                oAdminTitle.textContent = t(sAppId, 'Administrator default');
-                oContent.append(oAdminTitle);
+                const oAdminGroup = fnSettingsGroup(t(sAppId, 'Administrator default'));
 
                 const oScopeLabel = document.createElement('label');
                 const oScopeText = document.createElement('span');
@@ -3336,7 +3998,8 @@ const fStartHomeWiki = () => {
                 };
                 oAdminScope.addEventListener('change', fnApplyAdminScope);
                 fnApplyAdminScope();
-                oContent.append(oScopeLabel, oAdminLabel, oHint);
+                oAdminGroup.body.append(oScopeLabel, oAdminLabel, oHint);
+                oContent.append(oAdminGroup.section);
             }
 
             const oDialog = oCore.dialogs.open({
@@ -3352,6 +4015,10 @@ const fStartHomeWiki = () => {
                                 const oPayload = {
                                     personalHomePageId: oPersonal.value || '',
                                     treeDragEnabled: !!oTreeDrag.checked,
+                                    treeSharingStateEnabled: !!oTreeSharing.checked,
+                                    pageNavigationEnabled: !!oPageNavigation.checked,
+                                    editorOpenPosition: oEditorOpenPosition.value === 'top' ? 'top' : 'bottom',
+                                    editorScrollSyncEnabled: !!oEditorScrollSync.checked,
                                     menuDensity: oMenuDensity.value === 'comfortable' ? 'comfortable' : 'compact',
                                     pageHeaderMode: oPageHeaderMode.value === 'sticky' ? 'sticky' : 'scroll',
                                 };
@@ -3871,6 +4538,7 @@ const fStartHomeWiki = () => {
                 return sRelative;
             },
         });
+        fnBindEditorScrollSync();
         fnStartDirtyWatch();
 
         const sCoreScrollAreaClass = oCore.layout.classes?.scrollArea || '';
@@ -3895,9 +4563,11 @@ const fStartHomeWiki = () => {
                     fnSetSidebar(false);
                 }
                 if (oMetrics.mode === 'desktop') fnRestoreSidebarWidth();
+                fnUpdateMobileEditorUi();
             },
         });
         fnRestoreSidebarWidth();
+        fnUpdateMobileEditorUi();
 
         const oSidebarResizer = fnById('hc-homewiki-sidebar-resizer');
         oSidebarResizer?.addEventListener('pointerdown', (oEvent) => {
@@ -3944,6 +4614,7 @@ const fStartHomeWiki = () => {
             ariaLabel: t(sAppId, 'Editor toolbar'),
             actions: fnToolbarActions(),
         });
+        fnMergeEditorToolbars();
 
         if (window.ResizeObserver) {
             oEditControlsObserver = new window.ResizeObserver(fnSyncStickyHeight);
@@ -3981,7 +4652,6 @@ const fStartHomeWiki = () => {
         fnBind('hc-homewiki-sidebar-open', 'click', (oEvent) => fnSetSidebar(true, oEvent.currentTarget));
         fnBind('hc-homewiki-sidebar-close', 'click', () => fnSetSidebar(false));
         fnBind('hc-homewiki-sidebar-backdrop', 'click', () => fnSetSidebar(false));
-        fnBind('hc-homewiki-mobile-new', 'click', fnCreatePage);
         fnBind('hc-homewiki-new', 'click', fnCreatePage);
         fnBind('hc-homewiki-app-actions', 'click', (oEvent) => fnOpenAppMenu(oEvent.currentTarget));
         fnBind('hc-homewiki-empty-new', 'click', fnCreatePage);
@@ -4010,11 +4680,28 @@ const fStartHomeWiki = () => {
                 } catch (oError) { fnNotifyError(oError); }
             }, 250);
         });
+        fnBind('hc-homewiki-nav-back', 'click', () => void fnNavigatePageHistory(-1));
+        fnBind('hc-homewiki-nav-home', 'click', () => void fnOpenEffectiveHomePage());
+        fnBind('hc-homewiki-nav-forward', 'click', () => void fnNavigatePageHistory(1));
+        fnBind('hc-homewiki-mobile-nav-back', 'click', () => void fnNavigatePageHistory(-1));
+        fnBind('hc-homewiki-mobile-nav-home', 'click', () => void fnOpenEffectiveHomePage());
+        fnBind('hc-homewiki-mobile-nav-forward', 'click', () => void fnNavigatePageHistory(1));
         fnBind('hc-homewiki-pin', 'click', () => void fnTogglePin());
         fnBind('hc-homewiki-edit-page', 'click', () => {
             if (oCurrentPage?.permissions.edit) { fnSetMode('edit'); oCoreEditor?.focus(); }
         });
-        fnBind('hc-homewiki-finish-edit', 'click', () => void fnFinishEditing());
+        fnBind('hc-homewiki-finish-edit', 'click', () => {
+            fnSetMobileToolbarOpen(false);
+            void fnFinishEditing();
+        });
+        fnBind('hc-homewiki-mobile-actions', 'click', (oEvent) => fnOpenMobileActions(oEvent.currentTarget));
+        document.addEventListener('pointerdown', (oEvent) => {
+            if (!bMobileToolbarOpen || !fnIsMobileLayout()) return;
+            const oToolbarRow = fnById('hc-homewiki-editor-toolbar-row');
+            const oTarget = oEvent.target instanceof Node ? oEvent.target : null;
+            if (!oTarget || oToolbarRow?.contains(oTarget)) return;
+            fnSetMobileToolbarOpen(false);
+        }, { signal: oLifecycleSignal, passive: true });
         fnBind('hc-homewiki-side-preview', 'click', () => {
             bSidePreview = !bSidePreview;
             fnSetMode('edit');
@@ -4098,9 +4785,9 @@ const fStartHomeWiki = () => {
         }, { signal: oLifecycleSignal });
         document.addEventListener('click', (oEvent) => {
             const oPageMenu = fnById('hc-homewiki-page-menu');
-            if (!oPageMenu?.hidden && !oPageMenu.contains(oEvent.target) && !oEvent.target.closest?.('.hc-homewiki-nav-actions, #hc-homewiki-page-actions')) fnClosePageMenu();
+            if (!oPageMenu?.hidden && !oPageMenu.contains(oEvent.target) && !oEvent.target.closest?.('.hc-homewiki-nav-actions, #hc-homewiki-page-actions, #hc-homewiki-mobile-actions')) fnClosePageMenu();
             const oAppMenu = fnById('hc-homewiki-app-menu');
-            if (!oAppMenu?.hidden && !oAppMenu.contains(oEvent.target) && !oEvent.target.closest?.('#hc-homewiki-app-actions')) fnCloseAppMenu();
+            if (!oAppMenu?.hidden && !oAppMenu.contains(oEvent.target) && !oEvent.target.closest?.('#hc-homewiki-app-actions, #hc-homewiki-mobile-actions')) fnCloseAppMenu();
         }, { signal: oLifecycleSignal });
         /** CZ-FUNKCE: Zavře všechny otevřené plovoucí nabídky aplikace. Vstup: žádný přímý parametr. Výstup: výsledek operace nebo změna aplikačního/UI stavu. */
         const fnCloseFloatingMenus = () => { fnClosePageMenu(); fnCloseAppMenu(); };

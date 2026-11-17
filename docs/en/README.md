@@ -2,28 +2,28 @@
 
 # Home Wiki documentation
 
-Home Wiki is a private Nextcloud 35 wiki. Page content is regular Markdown stored in the owner's Nextcloud Files. The database stores the tree, permissions, aliases, link index, tags and other metadata.
+Home Wiki is a Markdown wiki for Nextcloud 35. Page content is stored in the owner's Nextcloud Files; the database stores the tree, permissions, links, aliases, tags and other metadata.
 
 ## Main features
 
-- arbitrarily deep page tree with drag-and-drop organization,
-- Shared App Core Markdown editor, live preview and autosave,
-- revision/CAS protection against concurrent overwrite,
-- full-text search, pinned, recent and frequently used pages,
-- internal Wiki links, historical aliases and backlinks,
-- private pages, explicit sharing and all-authenticated-users visibility,
+- hierarchical page tree and drag-and-drop organization,
+- Markdown editor, live preview and autosave,
+- conflict protection for concurrent changes,
+- internal Wiki links, aliases, backlinks and full-text search,
+- private pages, user/group sharing and all-authenticated-users visibility,
 - separate Read / Edit / Delete / Share permissions,
-- images and general attachments,
-- reusable tags and tag filtering,
+- persistent subtree sharing and ownership transfer,
+- images, attachments and tags,
 - version history through Nextcloud `files_versions`,
-- Home Wiki Trash, empty-trash action and optional 7/14/30/90-day retention,
-- native whole-Wiki ZIP backup/restore and generic Markdown/Markdown-ZIP import,
-- dashboard widget, responsive/mobile layout, compact navigation and optional sticky page header.
+- Trash and automatic retention,
+- native ZIP export/import and Markdown import,
+- configurable editor, navigation and page tree behavior.
 
 ## Documents
 
 - [Installation and upgrades](INSTALLATION.md)
 - [Using Home Wiki](USAGE.md)
 - [Data, permissions, Trash and backup](DATA_AND_BACKUP.md)
+- [Export/import format and converting data from other systems](IMPORT_EXPORT_FORMAT.md)
 
-The UI ships with Czech, English, German, Spanish, French, Italian, Dutch, Polish, Portuguese (Portugal), Slovak and Ukrainian translations. Missing translations fall back to the English source string.
+The UI ships with Czech, English, German, Spanish, French, Italian, Dutch, Polish, Portuguese (Portugal), Slovak and Ukrainian translations. Missing translations fall back to English.

@@ -65,6 +65,8 @@ Koš Home Wiki a historie `files_versions` se záměrně neexportují.
 
 Nativní restore přijímá formáty v1, v2 a v3 a lze jej provést pouze do prázdné vlastní Wiki. Import kontroluje UUID, duplicity slugů, cykly stromu, bezpečné cesty v ZIPu, velikostní limity a dostupné kontrolní součty. ACL na uživatele nebo skupiny, které už neexistují, se přeskočí a počet přeskočených položek se oznámí.
 
+Přesná struktura `manifest.json`, adresářů, polí, limitů a postup pro převod dat z jiných systémů jsou v dokumentu [Formát exportu/importu](FORMAT_IMPORT_EXPORT.md).
+
 ## Markdown import
 
 Samostatný `.md`/`.markdown` soubor se importuje jako nová soukromá stránka. ZIP bez Home Wiki manifestu je považován za Markdown adresář; importují se `.md`/`.markdown` soubory a hierarchie se odvozuje z `index.md` nebo odpovídající rodičovské Markdown stránky. Ostatní soubory v cizím Markdown ZIPu se ignorují – Home Wiki bez manifestu nehádá, ke které stránce mají patřit.

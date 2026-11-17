@@ -136,6 +136,7 @@ final class WikiRepository {
             'all_can_edit' => $qb->createNamedParameter((int)(bool)($page['all_can_edit'] ?? false), IQueryBuilder::PARAM_INT),
             'all_can_delete' => $qb->createNamedParameter((int)(bool)($page['all_can_delete'] ?? false), IQueryBuilder::PARAM_INT),
             'all_can_share' => $qb->createNamedParameter((int)(bool)($page['all_can_share'] ?? false), IQueryBuilder::PARAM_INT),
+            'inherit_sharing' => $qb->createNamedParameter((int)(bool)($page['inherit_sharing'] ?? false), IQueryBuilder::PARAM_INT),
         ])->executeStatement();
 
         $this->addAlias($page['id'], $page['owner_uid'], (string)$page['slug']);
@@ -163,6 +164,7 @@ final class WikiRepository {
             ->set('all_can_edit', $qb->createNamedParameter((int)(bool)($page['all_can_edit'] ?? false), IQueryBuilder::PARAM_INT))
             ->set('all_can_delete', $qb->createNamedParameter((int)(bool)($page['all_can_delete'] ?? false), IQueryBuilder::PARAM_INT))
             ->set('all_can_share', $qb->createNamedParameter((int)(bool)($page['all_can_share'] ?? false), IQueryBuilder::PARAM_INT))
+            ->set('inherit_sharing', $qb->createNamedParameter((int)(bool)($page['inherit_sharing'] ?? false), IQueryBuilder::PARAM_INT))
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id)))
             ->andWhere($qb->expr()->eq('revision', $qb->createNamedParameter($expectedRevision, IQueryBuilder::PARAM_INT)))
             ->executeStatement();
@@ -174,6 +176,46 @@ final class WikiRepository {
         $this->addAlias($id, (string)$page['owner_uid'], (string)$page['slug']);
         $this->addAlias($id, (string)$page['owner_uid'], (string)$page['title']);
         return true;
+    }
+
+    /** Atomically change the owner only when the old owner and revision still match. */
+    public function transferOwnerCAS(string $id, string $from, string $to, int $revision, ?string $parentId, string $slug, string $filePath): bool {
+        $qb = $this->db->getQueryBuilder();
+        return $qb->update(self::TABLE_PAGES)
+            ->set('owner_uid', $qb->createNamedParameter($to))
+            ->set('parent_id', $qb->createNamedParameter($parentId))
+            ->set('slug', $qb->createNamedParameter($slug))
+            ->set('file_path', $qb->createNamedParameter($filePath))
+            ->set('visibility', $qb->createNamedParameter('private'))
+            ->set('all_can_edit', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT))
+            ->set('all_can_delete', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT))
+            ->set('all_can_share', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT))
+            ->set('inherit_sharing', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT))
+            ->set('revision', $qb->createNamedParameter($revision + 1, IQueryBuilder::PARAM_INT))
+            ->set('updated_at', $qb->createNamedParameter(time(), IQueryBuilder::PARAM_INT))
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id)))
+            ->andWhere($qb->expr()->eq('owner_uid', $qb->createNamedParameter($from)))
+            ->andWhere($qb->expr()->eq('revision', $qb->createNamedParameter($revision, IQueryBuilder::PARAM_INT)))
+            ->executeStatement() === 1;
+    }
+
+    /** Remove original-owner aliases and add only non-conflicting aliases for the recipient. */
+    public function transferAliases(string $pageId, string $newOwnerUid, array $aliases, string $slug, string $title): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete(self::TABLE_ALIASES)
+            ->where($qb->expr()->eq('page_id', $qb->createNamedParameter($pageId)))
+            ->executeStatement();
+        foreach (array_unique(array_merge([$slug, $title], $aliases)) as $alias) {
+            $this->addAlias($pageId, $newOwnerUid, (string)$alias);
+        }
+    }
+
+    /** Page tags must belong to the recipient after an ownership transfer. */
+    public function clearPageTagsForTransfer(string $pageId): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->delete(self::TABLE_PAGE_TAGS)
+            ->where($qb->expr()->eq('page_id', $qb->createNamedParameter($pageId)))
+            ->executeStatement();
     }
 
     /** Recovery-only parent repair; normal interactive mutations must use CAS. */
@@ -493,6 +535,7 @@ final class WikiRepository {
         $row['all_can_edit'] = (bool)($row['all_can_edit'] ?? false);
         $row['all_can_delete'] = (bool)($row['all_can_delete'] ?? false);
         $row['all_can_share'] = (bool)($row['all_can_share'] ?? false);
+        $row['inherit_sharing'] = (bool)($row['inherit_sharing'] ?? false);
         $row['allPermissions'] = [
             'read' => $row['visibility'] === 'all',
             'edit' => $row['visibility'] === 'all' && $row['all_can_edit'],

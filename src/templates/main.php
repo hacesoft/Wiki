@@ -106,13 +106,25 @@
 
     <main class="hc-homewiki-main hc-shared-app-core-scroll-area" id="hc-homewiki-main">
         <div class="hc-homewiki-mobile-bar">
-            <button id="hc-homewiki-sidebar-open"
+            <strong class="hc-homewiki-mobile-label"><?php p($l->t('Wiki')); ?></strong>
+            <nav id="hc-homewiki-mobile-page-navigation"
+                 class="hc-homewiki-mobile-page-navigation"
+                 aria-label="<?php p($l->t('Page navigation')); ?>"
+                 hidden>
+                <button id="hc-homewiki-mobile-nav-back" type="button" title="<?php p($l->t('Back')); ?>" aria-label="<?php p($l->t('Back')); ?>">←</button>
+                <button id="hc-homewiki-mobile-nav-home" type="button" title="<?php p($l->t('Home')); ?>" aria-label="<?php p($l->t('Home')); ?>">🏠</button>
+                <button id="hc-homewiki-mobile-nav-forward" type="button" title="<?php p($l->t('Forward')); ?>" aria-label="<?php p($l->t('Forward')); ?>">→</button>
+            </nav>
+            <span class="hc-homewiki-mobile-spacer" aria-hidden="true"></span>
+            <button id="hc-homewiki-mobile-actions"
+                    class="hc-homewiki-mobile-actions"
                     type="button"
-                    class="hc-homewiki-mobile-menu"
-                    aria-controls="hc-homewiki-sidebar"
-                    aria-expanded="false">☰ <span><?php p($l->t('Wiki')); ?></span></button>
-            <strong class="hc-homewiki-mobile-current" id="hc-homewiki-mobile-current"><?php p($l->t('Home Wiki')); ?></strong>
-            <button id="hc-homewiki-mobile-new" type="button" class="primary" aria-label="<?php p($l->t('Create page')); ?>">＋</button>
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                    aria-label="<?php p($l->t('Wiki tools')); ?>"
+                    title="<?php p($l->t('Wiki tools')); ?>">⋯</button>
+            <button id="hc-homewiki-sidebar-open" type="button" aria-controls="hc-homewiki-sidebar" aria-expanded="false" hidden></button>
+            <span id="hc-homewiki-mobile-current" hidden><?php p($l->t('Home Wiki')); ?></span>
         </div>
 
         <div id="hc-homewiki-empty" class="hc-homewiki-empty-state">
@@ -125,6 +137,11 @@
 
         <article id="hc-homewiki-page" class="hc-homewiki-page" hidden>
             <header class="hc-homewiki-page-head">
+                <nav id="hc-homewiki-page-navigation" class="hc-homewiki-page-navigation" aria-label="<?php p($l->t('Page navigation')); ?>" hidden>
+                    <button id="hc-homewiki-nav-back" type="button" title="<?php p($l->t('Back')); ?>" aria-label="<?php p($l->t('Back')); ?>">←</button>
+                    <button id="hc-homewiki-nav-home" type="button" title="<?php p($l->t('Home')); ?>" aria-label="<?php p($l->t('Home')); ?>">🏠</button>
+                    <button id="hc-homewiki-nav-forward" type="button" title="<?php p($l->t('Forward')); ?>" aria-label="<?php p($l->t('Forward')); ?>">→</button>
+                </nav>
                 <div class="hc-homewiki-page-title-wrap">
                     <label class="hidden-visually" for="hc-homewiki-title"><?php p($l->t('Page title')); ?></label>
                     <input id="hc-homewiki-title" class="hc-homewiki-title" maxlength="255" placeholder="<?php p($l->t('Page title')); ?>">
@@ -150,7 +167,6 @@
 
                 <div id="hc-homewiki-editor-toolbar-row" class="hc-homewiki-editor-toolbar-row">
                     <div id="hc-homewiki-toolbar" class="hc-homewiki-toolbar-host"></div>
-                    <span id="hc-homewiki-save-state" class="hc-homewiki-save-state" aria-live="polite"><?php p($l->t('Saved')); ?></span>
                 </div>
             </div>
 

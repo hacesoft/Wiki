@@ -50,6 +50,7 @@ $table = $schema->hasTable($prefix . 'hc_homewiki_pages') ? $schema->getTable($p
             $addColumn($table, 'all_can_edit', 'boolean', ['notnull' => true, 'default' => false]);
             $addColumn($table, 'all_can_delete', 'boolean', ['notnull' => true, 'default' => false]);
             $addColumn($table, 'all_can_share', 'boolean', ['notnull' => true, 'default' => false]);
+            $addColumn($table, 'inherit_sharing', 'boolean', ['notnull' => true, 'default' => false]);
             $setPrimaryKey($table, ['id']);
             $addIndex($table, ['owner_uid'], 'hc_hw_pages_owner');
             $addIndex($table, ['parent_id'], 'hc_hw_pages_parent');

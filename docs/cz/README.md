@@ -2,28 +2,28 @@
 
 # Home Wiki – dokumentace
 
-Home Wiki je soukromá domácí/technická Wiki pro Nextcloud 35. Obsah stránek je běžný Markdown uložený v Nextcloud Files vlastníka. Databáze drží strom, oprávnění, aliasy, link index, štítky a další metadata.
+Home Wiki je Markdown Wiki pro Nextcloud 35. Obsah stránek je uložen v Nextcloud Files vlastníka a databáze uchovává strom, oprávnění, odkazy, aliasy, štítky a další metadata.
 
 ## Hlavní funkce
 
-- strom stránek s drag-and-drop řazením a přesunem mezi větvemi,
-- Markdown editor ze Shared App Core, živý náhled a autosave,
-- ochrana proti souběžnému přepsání změn pomocí `revision`/CAS,
-- fulltext, připnuté, nedávné a často používané stránky,
-- interní Wiki odkazy, historické aliasy a zpětné odkazy,
-- soukromé stránky, explicitní sdílení a viditelnost pro všechny přihlášené uživatele,
+- hierarchický strom stránek a drag-and-drop,
+- Markdown editor, živý náhled a autosave,
+- ochrana proti konfliktům při souběžných změnách,
+- interní Wiki odkazy, aliasy, zpětné odkazy a fulltext,
+- soukromé stránky, sdílení s uživateli/skupinami a viditelnost pro všechny přihlášené,
 - samostatná práva Read / Edit / Delete / Share,
-- obrázky a obecné přílohy,
-- opakovaně použitelné štítky a filtrování podle štítků,
-- historie verzí přes standardní Nextcloud `files_versions`,
-- vlastní Koš Home Wiki, vyprázdnění Koše a automatická retence 7/14/30/90 dní,
-- nativní ZIP export/import celé Wiki a obecný Markdown/Markdown-ZIP import,
-- dashboard widget, mobilní rozložení, kompaktní strom/menu a volitelné sticky záhlaví stránky.
+- dědění sdílení v podstromu a předání vlastnictví,
+- obrázky, přílohy a štítky,
+- historie verzí přes Nextcloud `files_versions`,
+- Koš a automatická retence,
+- nativní ZIP export/import a Markdown import,
+- nastavitelné chování editoru, navigace a stromu.
 
 ## Dokumenty
 
 - [Instalace a aktualizace](INSTALACE.md)
-- [Používání Wiki](POUZITI.md)
+- [Používání Home Wiki](POUZITI.md)
 - [Data, oprávnění, Koš a zálohy](DATA_A_ZALOHY.md)
+- [Formát exportu/importu a převod dat z jiných systémů](FORMAT_IMPORT_EXPORT.md)
 
-Uživatelské rozhraní je přeloženo do češtiny, angličtiny, němčiny, španělštiny, francouzštiny, italštiny, nizozemštiny, polštiny, portugalštiny (Portugalsko), slovenštiny a ukrajinštiny. Pokud překlad chybí, použije se anglický zdrojový text.
+Uživatelské rozhraní je přeloženo do češtiny, angličtiny, němčiny, španělštiny, francouzštiny, italštiny, nizozemštiny, polštiny, portugalštiny (Portugalsko), slovenštiny a ukrajinštiny. Pokud překlad chybí, použije se angličtina.

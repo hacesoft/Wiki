@@ -4,45 +4,118 @@
 
 ## Požadavky
 
-Home Wiki podporuje Nextcloud 35, PHP 8.3–8.5 a MariaDB/MySQL. Server musí mít PHP ZIP rozšíření. Aplikace vyžaduje Shared App Core (`hc_shared_app_core`) ve verzi 0.18.8 nebo novější.
+Home Wiki podporuje Nextcloud 35, PHP 8.3–8.5 a MariaDB/MySQL. PHP musí mít rozšíření ZIP. Aplikace vyžaduje HC Shared App Core (`hc_shared_app_core`) 0.18.8 nebo novější.
 
-Shared App Core nainstalujte a povolte dříve než Home Wiki.
+Před Home Wiki nainstalujte a povolte HC Shared App Core.
 
-## Instalace ze zdrojového projektu
+## 1. Instalace z Nextcloud App Store
 
-Aplikace je umístěna v `src/`, technické ID je `hc_homewiki`. Celý repozitář nelze umístit přímo do Nextcloud `custom_apps/`.
+Pokud je Home Wiki dostupná v App Store vaší instance, otevřete **Aplikace**, vyhledejte **Home Wiki** a zvolte instalaci/povolení. Aktualizace se potom nabízejí standardním mechanismem Nextcloudu.
 
-Na Synology NAS / Dockeru naklonujte repozitář mimo `custom_apps` a spusťte instalátor:
+To je doporučená metoda pro běžné uživatele a správce.
+
+## 2. Ruční instalace hotového release archivu
+
+Ruční instalace nevyžaduje `npm`, Composer ani sestavení zdrojového kódu na serveru.
+
+1. Stáhněte hotový release archiv `hc_homewiki-<verze>.tar.gz` nebo `hc_homewiki-<verze>.zip` z oficiálního vydání projektu.
+2. Rozbalte archiv. Kořenová složka musí být přesně `hc_homewiki`.
+3. Umístěte `hc_homewiki` do zapisovatelného adresáře aplikací Nextcloudu, obvykle `custom_apps/` nebo jiného adresáře definovaného v `apps_paths`.
+4. Nastavte vlastnictví a oprávnění tak, aby kód aplikace mohl číst webový proces Nextcloudu.
+5. Spusťte `occ` jako HTTP/web uživatel a aplikaci povolte.
+
+Příklad pro běžnou Linux instalaci:
 
 ```sh
-git clone https://github.com/hacesoft/Wiki.git
-cd Wiki
+cd /var/www/nextcloud
+sudo -u www-data php occ app:enable hc_homewiki
+```
+
+HTTP uživatel se liší podle distribuce (`www-data`, `apache`, `http`, `wwwrun` apod.).
+
+Příklad pro Docker:
+
+```sh
+docker exec -u www-data <nextcloud-container> php /var/www/html/occ app:enable hc_homewiki
+```
+
+Název kontejneru a cesta k `occ` se mohou podle nasazení lišit.
+
+Nextcloud při instalaci/aktivaci spustí migrace aplikace automaticky. Databázové tabulky nevytvářejte ručně.
+
+## 3. Automatizovaná instalace full-source balíku přes `install.sh`
+
+Full-source balík obsahuje také instalační skript pro Dockerová nasazení Nextcloudu. Tato možnost je vhodná pro správce nebo vývojové/servisní instalace, kde je požadována rychlá a kontrolovaná aktualizace bez ručního kopírování runtime souborů.
+
+### Požadavky
+
+- Linux/Unix shell s `sh`,
+- oprávnění `root` přes `sudo`,
+- příkaz `docker`,
+- spuštěný Nextcloud web kontejner obsahující `/var/www/html/occ`,
+- HC Shared App Core v požadované verzi.
+
+Skript nejprve hledá běžné názvy kontejnerů `nextcloud-app` a `nextcloud-cron`; pokud je nenajde, zkusí automaticky vyhledat jiné běžící kontejnery Nextcloudu.
+
+Po rozbalení full-source archivu přejděte do jeho kořene a spusťte:
+
+```sh
 sudo sh install.sh
 ```
 
-Alternativně přeneste pouze **obsah `src/`** do `custom_apps/hc_homewiki/`, nastavte příslušná oprávnění a spusťte jako uživatel webového serveru `php occ app:enable hc_homewiki`.
+Instalátor průběžně vypisuje jednotlivé kroky. Před nasazením nové verze kontroluje metadata a kompatibilitu, ověří Shared App Core, změří a zazálohuje předchozí runtime, validuje PHP, nasadí runtime do webového/cron kontejneru, zkontroluje databázové schéma a aktivuje aplikaci. Pokud se aktualizace nezdaří, transakční instalace se pokusí obnovit předchozí runtime a stav aplikace.
 
-Při první instalaci Nextcloud automaticky spustí migraci z `lib/Migration/` a vytvoří potřebné tabulky a indexy. Není potřeba ručně vytvářet databázové tabulky.
+Záloha předchozího runtime se ukládá do datového adresáře Nextcloudu pod `hc-core-deployment-backups/`. Uživatelský adresář `HomeWiki/` není součástí runtime a instalační skript jej nemaže.
 
-Na produkčním Nextcloudu 35 nejsou vývojářské příkazy `migrations:status` a `migrations:migrate` standardně dostupné. Stav instalace ověřte například takto:
+Tento skript je doplňková instalační cesta pro Docker. Není vyžadován pro instalaci z Nextcloud App Store ani pro ruční instalaci hotového release archivu.
 
-```bash
-sudo -u www-data php occ config:app:get hc_homewiki installed_version
+## 4. Ověření instalace
+
+Aktivní aplikaci a evidovanou verzi lze ověřit přes `occ`:
+
+```sh
 sudo -u www-data php occ app:list --enabled
+sudo -u www-data php occ config:app:get hc_homewiki installed_version
 ```
 
-## Ruční aktualizace
+## 5. Ruční aktualizace
 
-Pro Synology NAS / Docker lze použít samostatný skript `install.sh` spuštěný z kořene repozitáře mimo `custom_apps`.
+Před aktualizací vytvořte nativní export Home Wiki a běžnou zálohu Nextcloudu.
 
-Před aktualizací doporučujeme vytvořit nativní export Wiki a běžnou zálohu Nextcloudu. Potom nahraďte kód aplikace novou verzí při zachování adresáře `hc_homewiki`. Nextcloud při aktualizaci spouští všechny dosud neprovedené migrace.
+1. Zakázat Home Wiki:
 
-Nemažte uživatelský adresář `HomeWiki/` ani databázové tabulky aplikace. Obsah stránek, média a přílohy jsou uživatelská data, ne instalační soubory aplikace.
+```sh
+sudo -u www-data php occ app:disable hc_homewiki
+```
 
-## Background jobs
+2. Nahraďte **pouze kód aplikace** novou složkou `hc_homewiki` z release archivu.
+3. Nemazat uživatelský adresář `HomeWiki/` ani databázové tabulky aplikace.
+4. Znovu aplikaci povolte:
 
-Automatické čištění Koše používá standardní Nextcloud background job. Pro běžný provoz má mít Nextcloud nakonfigurovaný systémový cron, nikoli pouze AJAX režim.
+```sh
+sudo -u www-data php occ app:enable hc_homewiki
+```
 
-## Odinstalace
+5. Ověřte `installed_version` podle předchozí kapitoly.
 
-Zakázání aplikace samo o sobě nemaže uživatelský obsah. Před definitivním odstraněním dat použijte podle potřeby nativní export celé Wiki. Mazání dat provádějte vědomě přes funkce Home Wiki nebo standardní správu Nextcloudu.
+Při aktivaci Nextcloud provede potřebné migrace nové verze.
+
+## 6. Background jobs
+
+Automatická retence Koše používá standardní Nextcloud background job. Pro běžný serverový provoz je doporučen systémový Cron namísto režimu AJAX.
+
+## 7. Deaktivace a odstranění aplikace
+
+Dočasné vypnutí:
+
+```sh
+sudo -u www-data php occ app:disable hc_homewiki
+```
+
+Zakázání aplikace samo o sobě nemaže uživatelské Wiki soubory. Pokud chcete aplikaci odstranit ručně, nejprve ji zakažte a potom odstraňte pouze adresář kódu `hc_homewiki` z adresáře aplikací.
+
+Před definitivním odstraněním dat vytvořte export. Uživatelská data mažte pouze vědomě přes Home Wiki nebo správu Nextcloudu.
+
+## Poznámka k adresářům aplikací
+
+Nextcloud může mít více adresářů aplikací nastavených přes `apps_paths`. Při ruční instalaci používejte zapisovatelný adresář určený pro vlastní aplikace; neupravujte systémové aplikace dodané se serverem.

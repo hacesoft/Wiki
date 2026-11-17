@@ -19,6 +19,7 @@ return [
         ['name' => 'wiki#createPage', 'url' => '/api/pages', 'verb' => 'POST'],
         ['name' => 'wiki#updatePage', 'url' => '/api/pages/{id}', 'verb' => 'PUT'],
         ['name' => 'wiki#deletePage', 'url' => '/api/pages/{id}', 'verb' => 'DELETE'],
+        ['name' => 'wiki#transferOwnership', 'url' => '/api/pages/{id}/transfer', 'verb' => 'POST'],
         ['name' => 'wiki#listTrash', 'url' => '/api/trash', 'verb' => 'GET'],
         ['name' => 'wiki#emptyTrash', 'url' => '/api/trash', 'verb' => 'DELETE'],
         ['name' => 'wiki#restoreTrash', 'url' => '/api/trash/{id}/restore', 'verb' => 'POST'],

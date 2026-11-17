@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\HcHomeWiki\Controller;
 
 use OCA\HcHomeWiki\AppInfo\Application;
+use OCP\App\IAppManager;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
@@ -17,8 +18,9 @@ final class PageController extends Controller {
     public function __construct(
         IRequest $request,
         private IURLGenerator $urlGenerator,
+        private IAppManager $appManager,
     ) {
-        // CZ-FUNKCE: Inicializuje objekt a jeho závislosti. Vstup: `$request`, `$urlGenerator`. Výstup: bez samostatné návratové hodnoty; výsledkem je inicializovaný objekt.
+        // CZ-FUNKCE: Inicializuje kontroler hlavní stránky. Vstup: požadavek, generátor URL a správce aplikací Nextcloudu. Výstup: inicializovaný kontroler.
         parent::__construct(Application::APP_ID, $request);
     }
 
@@ -35,7 +37,7 @@ final class PageController extends Controller {
         Util::addScript(Application::APP_ID, 'app');
 
         return new TemplateResponse(Application::APP_ID, 'main', [
-            'version' => Application::VERSION,
+            'version' => $this->appManager->getAppVersion(Application::APP_ID, false),
             'requiredCoreVersion' => $dependency['requiredVersion'],
             'requiredCoreApiVersion' => $dependency['requiredApiVersion'],
             'coreDownloadUrl' => $dependency['downloadUrl'],

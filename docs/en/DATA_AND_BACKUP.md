@@ -65,6 +65,8 @@ Home Wiki Trash and Nextcloud `files_versions` history are intentionally exclude
 
 Native restore accepts v1, v2 and v3 backups and only restores into an empty owned Wiki. It validates UUIDs, duplicate slugs, tree cycles, ZIP paths, size limits and available SHA-256 hashes. ACL entries referring to users/groups that no longer exist are skipped and reported.
 
+The exact `manifest.json` layout, directories, fields, limits, and a conversion workflow for data from other systems are documented in [Export/import format](IMPORT_EXPORT_FORMAT.md).
+
 ## Markdown import
 
 A standalone `.md`/`.markdown` file becomes a new private page. A ZIP without a Home Wiki manifest is treated as a Markdown directory: `.md`/`.markdown` files are imported and hierarchy is inferred from `index.md` or matching parent Markdown files. Other files are ignored because a foreign Markdown ZIP has no reliable attachment-to-page mapping.

@@ -192,6 +192,22 @@ final class WikiController extends Controller {
     }
 
     #[NoAdminRequired]
+    #[PasswordConfirmationRequired(strict: true)]
+    public function transferOwnership(string $id): JSONResponse {
+        try {
+            return new JSONResponse($this->wikiService->transferOwnership($this->uid(), $id, $this->jsonBody()));
+        } catch (\InvalidArgumentException $exception) {
+            return new JSONResponse(['error' => $exception->getMessage()], 400);
+        } catch (\RuntimeException $exception) {
+            $status = in_array($exception->getCode(), [403, 404, 409, 423], true) ? $exception->getCode() : 500;
+            return new JSONResponse(['error' => $exception->getMessage()], $status);
+        } catch (\Throwable $exception) {
+            $this->logger->error('Home Wiki ownership transfer failed.', ['exception' => $exception]);
+            return new JSONResponse(['error' => $this->l10n->t('Could not transfer page ownership')], 500);
+        }
+    }
+
+    #[NoAdminRequired]
     public function deletePage(string $id): JSONResponse {
         // CZ-FUNKCE: Smaže požadovaná data. Vstup: `$id`. Výstup: hodnota typu `JSONResponse`.
         try {

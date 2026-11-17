@@ -1,7 +1,6 @@
-# Home Wiki 1.0.0
+# Home Wiki 1.2.0
 
-
-Home Wiki je Markdown Wiki pro **Nextcloud 35**. Stránky, obrázky a přílohy se ukládají jako soubory do Nextcloud Files vlastníka; databáze Nextcloudu obsahuje strom stránek, sdílení, štítky a další metadata.
+Home Wiki je Markdown Wiki pro **Nextcloud 35**. Stránky, obrázky a přílohy se ukládají do Nextcloud Files vlastníka; databáze Nextcloudu uchovává strom stránek, sdílení, štítky, odkazy a další metadata.
 
 [English](README.md) · [Česká dokumentace](docs/cz/README.md) · [English documentation](docs/en/README.md)
 
@@ -10,62 +9,68 @@ Home Wiki je Markdown Wiki pro **Nextcloud 35**. Stránky, obrázky a přílohy 
 - Nextcloud **35**
 - PHP **8.3–8.5** s rozšířením ZIP
 - MariaDB/MySQL přes databázový ovladač Nextcloudu `mysql`
-- [Shared App Core](https://github.com/hacesoft/core) (`hc_shared_app_core`) **0.18.8 nebo novější**, nainstalované a povolené předem
+- [HC Shared App Core](https://github.com/hacesoft/core) (`hc_shared_app_core`) **0.18.8 nebo novější**
 
 ## Instalace
 
-### Instalace z tohoto zdrojového projektu
+### Nextcloud App Store
 
-Zdrojové soubory aplikace jsou v adresáři `src/`. Celý repozitář proto **nekopírujte přímo** do Nextcloud `custom_apps/`.
+Pokud je Home Wiki dostupná v App Store vaší instance Nextcloudu, je toto doporučený způsob instalace. Nejprve nainstalujte a povolte **HC Shared App Core**, potom v **Aplikace** vyhledejte **Home Wiki** a zvolte instalaci/povolení.
 
-Nejprve nainstalujte a povolte HC Shared App Core. Na podporovaném Synology NAS s Dockerem stáhněte repozitář mimo `custom_apps` a spusťte z jeho kořene:
+### Ruční instalace
+
+Ruční instalace je podporována pro správce, kteří nechtějí nebo nemohou použít App Store. Použijte hotový release archiv `hc_homewiki-<verze>.tar.gz` nebo `hc_homewiki-<verze>.zip`, nikoli celý zdrojový projekt.
+
+Archiv obsahuje jediný kořenový adresář `hc_homewiki`. Umístěte jej do zapisovatelného adresáře aplikací Nextcloudu (typicky `custom_apps/hc_homewiki`), nastavte vlastnictví/oprávnění pro webový proces a aplikaci povolte přes `occ`:
 
 ```sh
-git clone https://github.com/hacesoft/Wiki.git
-cd Wiki
+sudo -u www-data php occ app:enable hc_homewiki
+```
+
+V Dockeru spusťte stejný příkaz uvnitř kontejneru Nextcloudu; například:
+
+```sh
+docker exec -u www-data <nextcloud-container> php /var/www/html/occ app:enable hc_homewiki
+```
+
+Přesný postup, včetně ruční aktualizace a kontroly instalace, je v [Instalace a aktualizace](docs/cz/INSTALACE.md).
+
+### Instalace full-source balíku přes `install.sh`
+
+Pro správce s Dockerovým nasazením Nextcloudu je v full-source balíku zachovaný také automatizovaný instalační postup. Po rozbalení full-source archivu spusťte z jeho kořene:
+
+```sh
 sudo sh install.sh
 ```
 
-Instalační skript nasazuje obsah `src/` pod ID `hc_homewiki` a zachovává data aplikace. Pro ostatní prostředí lze do `custom_apps/hc_homewiki/` umístit **pouze obsah `src/`**, nastavit správná oprávnění a zapnout aplikaci pomocí `occ app:enable hc_homewiki`. Před aktualizací zálohujte databázi i data. Podrobnosti: [Instalace a aktualizace](docs/cz/INSTALACE.md).
-
-### Synology NAS / Docker
-
-Volitelný instalační skript je určen pro prostředí s přístupem k příkazům Dockeru. Repozitář rozbalte či naklonujte **mimo** `custom_apps` a v jeho kořeni spusťte:
-
-```sh
-sudo sh install.sh
-```
-
-Instalátor vyhledá kontejnery Nextcloudu, ověří požadavky, zazálohuje stávající kód aplikace, nasadí nové soubory a ověří výsledek. Uživatelská data Wiki nemaže. Automatické vyhledání kontejnerů nemusí fungovat v každém prostředí. Viz [Instalace na NAS](docs/cz/NAS_INSTALACE.md).
-
-`uninstall.sh` odstraní z Docker nasazení pouze kód aplikace; soubory uživatele a databázové záznamy zachová. Používejte jej jen s vědomím dopadů vypnutí/odebrání aplikace.
+Skript ověří metadata aplikace, vyhledá běžící Nextcloud kontejnery, zkontroluje HC Shared App Core, připraví transakční zálohu předchozího runtime, nasadí nový kód, ověří databázové schéma a při selhání se pokusí obnovit předchozí runtime. Tento způsob je určen pro Dockerové instalace s dostupným příkazem `docker`; pro běžnou instalaci bez Dockeru použijte App Store nebo ruční instalaci release archivu.
 
 ## Hlavní funkce
 
-- Hierarchický strom stránek s drag-and-drop přesouváním
-- Markdown editor ze Shared App Core, živý náhled a automatické ukládání
-- Kontrola revizí a řešení konfliktů při souběžných změnách
-- Soukromé, sdílené a všem přihlášeným dostupné stránky, samostatná práva Read / Edit / Delete / Share
-- Wiki odkazy, aliasy, zpětné odkazy a fulltext
-- Připnuté, nedávné a často používané stránky, štítky a přílohy
-- Historie verzí přes `files_versions` Nextcloudu
-- Koš s volitelnou retencí, ZIP export/import celé Wiki
-- Widget na dashboardu, mobilní rozložení a nastavitelná navigace
+- hierarchický strom stránek s drag-and-drop přesouváním,
+- Markdown editor ze Shared App Core, živý náhled a automatické ukládání,
+- ochrana proti souběžnému přepsání změn,
+- soukromé stránky, sdílení s uživateli/skupinami a viditelnost pro všechny přihlášené uživatele,
+- samostatná práva Read / Edit / Delete / Share a volitelné zobrazení práv ve stromu,
+- trvalé dědění sdílení v podstromu a předání vlastnictví stránky/podstromu,
+- Wiki odkazy, aliasy, zpětné odkazy a fulltext,
+- připnuté, nedávné a často používané stránky, štítky a přílohy,
+- historie verzí přes Nextcloud `files_versions`,
+- Koš s volitelnou retencí,
+- ZIP export/import celé Wiki a import Markdown/Markdown ZIP,
+- volitelná navigace `← 🏠 →`, mobilní rozložení a uživatelské nastavení editoru,
+- volitelná synchronizace posouvání Markdown zdroje a živého náhledu.
 
-## Struktura repozitáře
+## Dokumentace
 
-- `src/` – hotová aplikace (`src/appinfo/`, `src/lib/`, `src/js/`, `src/css/`, `src/l10n/`, `src/templates/`, `src/img/`)
-- `docs/` – veřejná dokumentace v češtině a angličtině
-- `install.sh`, `uninstall.sh`, `scripts/` – volitelné nástroje pro Docker/NAS, pro běžnou instalaci Nextcloudu nejsou potřeba
-- `build-release.sh` – sestavení instalačních archivů
-- `README.md`, `README_CZ.md`, `LICENSE`, `CHANGELOG.md` – dokumentace a licence
+- [Instalace a aktualizace](docs/cz/INSTALACE.md)
+- [Používání Home Wiki](docs/cz/POUZITI.md)
+- [Data, oprávnění, Koš a zálohy](docs/cz/DATA_A_ZALOHY.md)
+- [Formát exportu/importu a převod dat z jiných systémů](docs/cz/FORMAT_IMPORT_EXPORT.md)
 
-## Další dokumentace
+## Zálohování
 
-- [Instalace](docs/cz/INSTALACE.md)
-- [Instalace na NAS](docs/cz/NAS_INSTALACE.md)
-- [Používání Wiki](docs/cz/POUZITI.md)
-- [Data, sdílení, Koš a zálohy](docs/cz/DATA_A_ZALOHY.md)
+Před ruční aktualizací nebo větší změnou doporučujeme vytvořit nativní export Home Wiki a běžnou zálohu Nextcloudu. Uživatelský adresář `HomeWiki/` není součástí instalačního kódu aplikace a při aktualizaci se nesmí mazat.
 
 ## Jazyky
 
@@ -73,6 +78,6 @@ Instalátor vyhledá kontejnery Nextcloudu, ověří požadavky, zazálohuje st�
 
 ## Licence
 
-AGPL-3.0-or-later. Viz [LICENSE](LICENSE) a [úplné znění AGPL 3.0](https://www.gnu.org/licenses/agpl-3.0.txt).
+AGPL-3.0-or-later. Viz [LICENSE](LICENSE).
 
-Veřejná historie vydání: [CHANGELOG.md](CHANGELOG.md). Český přehled: [CHANGELOG.cs.md](CHANGELOG.cs.md).
+Historie vydání: [CHANGELOG.md](CHANGELOG.md). Český přehled: [CHANGELOG.cs.md](CHANGELOG.cs.md).

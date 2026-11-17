@@ -355,6 +355,27 @@
     min-width: 0;
 }
 
+.hc-homewiki-page-navigation {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 4px;
+}
+
+.hc-homewiki-page-navigation[hidden] {
+    display: none !important;
+}
+
+.hc-homewiki-page-navigation button {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    padding: 0;
+    font-size: 18px;
+    line-height: 1;
+}
+
 .hc-homewiki-page-title-wrap {
     min-width: 0;
     flex: 1 1 auto;
@@ -901,12 +922,33 @@
 
 .hc-homewiki-settings-content {
     display: grid;
-    gap: 14px;
-    min-width: min(520px, 80vw);
+    gap: 16px;
+    min-width: min(540px, 82vw);
 }
-.hc-homewiki-settings-content > label { display: grid; gap: 6px; }
+.hc-homewiki-settings-group {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-large, 8px);
+    background: var(--color-main-background);
+}
+.hc-homewiki-settings-group-header,
+.hc-homewiki-settings-group-body {
+    display: grid;
+    gap: 8px;
+}
+.hc-homewiki-settings-group-header strong { font-size: 1.05em; }
+.hc-homewiki-settings-group-header small,
+.hc-homewiki-settings-group-body > small {
+    color: var(--color-text-maxcontrast);
+    line-height: 1.35;
+}
+.hc-homewiki-settings-group-body > label:not(.hc-homewiki-settings-check) {
+    display: grid;
+    gap: 6px;
+}
 .hc-homewiki-settings-content select { min-height: 44px; max-width: 100%; }
-.hc-homewiki-settings-content hr { width: 100%; border: 0; border-top: 1px solid var(--color-border); }
 
 @media (max-width: 760px) {
     .hc-homewiki-acl-row {
@@ -1652,10 +1694,43 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.hc-homewiki-app .hc-homewiki-shared-indicator {
+/* Kompaktní a pouze informační stav sdílení ve stromu.
+ * Přesný rozpis oprávnění zůstává v tooltipu, takže strom se neroztahuje
+ * ani u stránek sdílených s více uživateli a skupinami. */
+.hc-homewiki-app .hc-homewiki-tree-sharing-state {
     flex: 0 0 auto;
-    min-width: 1.1em;
-    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    max-width: 96px;
+    min-height: 20px;
+    padding: 1px 4px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-background-hover);
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.hc-homewiki-app .hc-homewiki-tree-sharing-visibility,
+.hc-homewiki-app .hc-homewiki-tree-sharing-rights,
+.hc-homewiki-app .hc-homewiki-tree-sharing-count,
+.hc-homewiki-app .hc-homewiki-tree-sharing-extensions,
+.hc-homewiki-app .hc-homewiki-tree-sharing-subtree {
+    flex: 0 0 auto;
+}
+.hc-homewiki-app .hc-homewiki-tree-sharing-rights {
+    letter-spacing: -1px;
+}
+.hc-homewiki-app .hc-homewiki-tree-sharing-count,
+.hc-homewiki-app .hc-homewiki-tree-sharing-extensions {
+    font-size: .88em;
+}
+.hc-homewiki-app[data-menu-density="compact"] .hc-homewiki-tree-sharing-state {
+    max-width: 82px;
+    min-height: 18px;
+    padding: 0 3px;
+    font-size: .88em;
 }
 
 .hc-homewiki-app[data-menu-density="compact"] .hc-homewiki-page-menu {
@@ -1886,4 +1961,802 @@
     .hc-homewiki-app:not([data-core-layout="mobile"]) .hc-homewiki-title {
         flex-basis: clamp(160px, 34vw, 360px);
     }
+}
+
+
+.hc-homewiki-mobile-tools-toggle {
+    display: none;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-bar {
+    min-height: 44px;
+    gap: 6px;
+    padding: max(4px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 4px max(8px, env(safe-area-inset-left));
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-menu span,
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-current {
+    display: none;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-menu,
+.hc-homewiki-app[data-core-layout="mobile"] #hc-homewiki-mobile-new {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-page {
+    padding: 10px 10px max(80px, env(safe-area-inset-bottom));
+}
+
+.hc-homewiki-app[data-core-layout="mobile"].hc-homewiki-edit-mode .hc-homewiki-page {
+    padding-bottom: max(150px, calc(env(safe-area-inset-bottom) + 110px));
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-page-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 10px;
+    align-items: start;
+    margin-bottom: 8px;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-page-navigation {
+    grid-column: 1 / -1;
+    gap: 6px;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-page-navigation button {
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    min-height: 30px;
+    font-size: 16px;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-title {
+    font-size: clamp(20px, 5.8vw, 24px);
+    line-height: 1.2;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-page-meta {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-head-actions {
+    width: auto;
+    justify-content: flex-end;
+    align-self: start;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-head-actions > button:not(#hc-homewiki-page-actions) {
+    display: none !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] #hc-homewiki-page-actions {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-tabs {
+    margin-top: 4px;
+    gap: 4px;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-tab,
+.hc-homewiki-app[data-core-layout="mobile"] #hc-homewiki-finish-edit {
+    min-height: 38px;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-tools-toggle {
+    position: fixed;
+    right: calc(env(safe-area-inset-right) + 12px);
+    bottom: calc(env(safe-area-inset-bottom) + 14px);
+    z-index: 26;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    min-height: 48px;
+    padding: 0;
+    border-radius: 999px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .24);
+    font-size: 28px;
+    line-height: 1;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-tools-toggle[hidden] {
+    display: none !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-editor-toolbar-row {
+    position: fixed;
+    left: calc(env(safe-area-inset-left) + 10px);
+    right: calc(env(safe-area-inset-right) + 10px);
+    bottom: calc(env(safe-area-inset-bottom) + 70px);
+    z-index: 25;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    background: var(--color-main-background);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, .28);
+    max-height: min(45dvh, 320px);
+    overflow: hidden;
+    transform: translateY(calc(100% + 12px));
+    opacity: 0;
+    pointer-events: none;
+    transition: transform .18s ease, opacity .18s ease;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"].hc-homewiki-mobile-toolbar-open .hc-homewiki-editor-toolbar-row {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-editor-toolbar-row[hidden] {
+    display: none !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-toolbar-host {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-save-state {
+    align-self: flex-end;
+    padding-right: 0;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-preview,
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-source {
+    min-height: max(260px, calc(var(--hc-shared-app-core-available-height, 100dvh) - 160px));
+}
+
+/* Home Wiki 1.2.2: skutečně minimální mobilní rozhraní. */
+.hc-homewiki-app[data-core-layout="mobile"] {
+    --hc-homewiki-sticky-offset: 32px;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 32px;
+    height: 32px;
+    padding: 2px max(6px, env(safe-area-inset-right)) 2px max(8px, env(safe-area-inset-left));
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-main-background);
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-label {
+    font-size: 13px;
+    line-height: 1;
+    font-weight: 600;
+    opacity: .82;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    min-height: 28px;
+    padding: 0;
+    border-radius: 8px;
+    font-size: 20px;
+    line-height: 1;
+}
+
+/* Na telefonu nezabírá hlavička stránky žádnou výšku. Všechny akce jsou v nabídce ⋯. */
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-page-head {
+    display: none !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-page {
+    padding: 4px 6px max(60px, env(safe-area-inset-bottom));
+}
+
+.hc-homewiki-app[data-core-layout="mobile"].hc-homewiki-edit-mode .hc-homewiki-page {
+    padding-bottom: max(72px, calc(env(safe-area-inset-bottom) + 60px));
+}
+
+/* Editační horní panel na telefonu nemá vlastní výšku. Přepínání režimu je v nabídce ⋯. */
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-edit-controls {
+    position: static;
+    top: auto;
+    z-index: auto;
+    height: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    overflow: visible;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-tabs {
+    display: none !important;
+}
+
+/* Formátovací nástroje se zobrazí jen na vyžádání přes mobilní nabídku. */
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-editor-toolbar-row {
+    position: fixed;
+    left: calc(env(safe-area-inset-left) + 8px);
+    right: calc(env(safe-area-inset-right) + 8px);
+    bottom: calc(env(safe-area-inset-bottom) + 10px);
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 8px;
+    max-height: min(46dvh, 320px);
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    background: var(--color-main-background);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, .3);
+    overflow: hidden;
+    transform: translateY(calc(100% + 24px));
+    opacity: 0;
+    pointer-events: none;
+    transition: transform .16s ease, opacity .16s ease;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"].hc-homewiki-mobile-toolbar-open .hc-homewiki-editor-toolbar-row {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-editor-toolbar-row[hidden] {
+    display: none !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-toolbar-host {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-save-state {
+    align-self: flex-end;
+    padding: 0 2px;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-preview,
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-source {
+    min-height: max(280px, calc(var(--hc-shared-app-core-available-height, 100dvh) - 92px));
+    padding-top: 6px !important;
+}
+
+/* Staré plovoucí tlačítko z 1.2.1 se již na telefonu nepoužívá. */
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-tools-toggle {
+    display: none !important;
+}
+
+/* Home Wiki 1.2.3: jednotný responzivní mobilní řádek pro telefon na výšku i naležato. */
+.hc-homewiki-app[data-core-layout="mobile"],
+.hc-homewiki-app[data-core-layout="tablet"] {
+    --hc-homewiki-sticky-offset: 36px;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-bar,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-bar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
+    width: 100%;
+    min-height: 36px;
+    height: 36px;
+    padding: 2px max(6px, env(safe-area-inset-right)) 2px max(7px, env(safe-area-inset-left));
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-main-background);
+    overflow: hidden;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-label,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-label {
+    flex: 0 0 auto;
+    margin-right: 2px;
+    font-size: 13px;
+    line-height: 1;
+    font-weight: 700;
+    opacity: .9;
+    white-space: nowrap;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-page-navigation,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-page-navigation {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-page-navigation[hidden],
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-page-navigation[hidden] {
+    display: none !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-page-navigation button,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-page-navigation button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 29px;
+    min-width: 29px;
+    height: 29px;
+    min-height: 29px;
+    padding: 0;
+    border-radius: 7px;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-page-navigation button:disabled,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-page-navigation button:disabled {
+    opacity: .35;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-spacer,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-spacer {
+    flex: 1 1 auto;
+    min-width: 2px;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-actions,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-actions {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    min-width: 32px;
+    height: 29px;
+    min-height: 29px;
+    padding: 0;
+    border-radius: 8px;
+    font-size: 20px;
+    line-height: 1;
+}
+
+/* Na úzkém zařízení není žádná druhá hlavička stránky. */
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-page-head,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-page-head {
+    display: none !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-page,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-page {
+    padding: 4px 6px max(60px, env(safe-area-inset-bottom));
+}
+
+.hc-homewiki-app[data-core-layout="mobile"].hc-homewiki-edit-mode .hc-homewiki-page,
+.hc-homewiki-app[data-core-layout="tablet"].hc-homewiki-edit-mode .hc-homewiki-page {
+    padding-bottom: max(72px, calc(env(safe-area-inset-bottom) + 60px));
+}
+
+/* Režimy editoru a běžné ovládání jsou v nabídce ⋯; nahoře nic dalšího nezabírá místo. */
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-edit-controls,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-edit-controls {
+    position: static;
+    top: auto;
+    z-index: auto;
+    height: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    overflow: visible;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-tabs,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-tabs {
+    display: none !important;
+}
+
+/* Formátovací toolbar je dotyková paleta, otevřená z nabídky ⋯. */
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-editor-toolbar-row,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-editor-toolbar-row {
+    position: fixed;
+    left: calc(env(safe-area-inset-left) + 8px);
+    right: calc(env(safe-area-inset-right) + 8px);
+    bottom: calc(env(safe-area-inset-bottom) + 8px);
+    z-index: 55;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 8px;
+    max-height: min(50dvh, 340px);
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    background: var(--color-main-background);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, .32);
+    overflow: hidden;
+    transform: translateY(calc(100% + 24px));
+    opacity: 0;
+    pointer-events: none;
+    transition: transform .16s ease, opacity .16s ease;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"].hc-homewiki-mobile-toolbar-open .hc-homewiki-editor-toolbar-row,
+.hc-homewiki-app[data-core-layout="tablet"].hc-homewiki-mobile-toolbar-open .hc-homewiki-editor-toolbar-row {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-editor-toolbar-row[hidden],
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-editor-toolbar-row[hidden] {
+    display: none !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-toolbar-host,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-toolbar-host {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-save-state,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-save-state {
+    align-self: flex-end;
+    padding: 0 2px;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-preview,
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-source,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-preview,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-source {
+    min-height: max(280px, calc(var(--hc-shared-app-core-available-height, 100dvh) - 88px));
+    padding-top: 6px !important;
+}
+
+/* Jediné ⋯ otevírá na telefonu velkou dotykovou paletu místo desktopového popupu. */
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-app-menu,
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-page-menu,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-app-menu,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-page-menu {
+    left: max(8px, env(safe-area-inset-left)) !important;
+    right: max(8px, env(safe-area-inset-right)) !important;
+    top: auto !important;
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: min(72dvh, 560px);
+    padding: 8px;
+    border-radius: 14px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-shadow: 0 16px 42px rgba(0, 0, 0, .38);
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-app-menu[hidden],
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-page-menu[hidden],
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-app-menu[hidden],
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-page-menu[hidden] {
+    display: none !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-app-menu button,
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-page-menu button,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-app-menu button,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-page-menu button {
+    min-height: 46px;
+    padding: 8px 12px;
+    border-radius: 9px;
+    font-size: 15px;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-menu-separator,
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-menu-heading,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-menu-separator,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-menu-heading {
+    grid-column: 1 / -1;
+}
+
+/* Telefon naležato / širší mobil: nabídka využije dostupnou šířku ve dvou sloupcích. */
+@container (min-width: 520px) and (max-width: 959px) {
+    .hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-app-menu,
+    .hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-page-menu,
+    .hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-app-menu,
+    .hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-page-menu {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Extrémně úzký portrét ještě o pár pixelů zmenší ovládání, ale nic neschová. */
+@container (max-width: 340px) {
+    .hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-bar,
+    .hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-bar {
+        gap: 2px;
+        padding-left: max(4px, env(safe-area-inset-left));
+        padding-right: max(4px, env(safe-area-inset-right));
+    }
+    .hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-label,
+    .hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-label {
+        font-size: 12px;
+        margin-right: 0;
+    }
+    .hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-page-navigation button,
+    .hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-page-navigation button {
+        width: 27px;
+        min-width: 27px;
+        height: 27px;
+        min-height: 27px;
+        font-size: 15px;
+    }
+    .hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-actions,
+    .hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-actions {
+        width: 29px;
+        min-width: 29px;
+        height: 27px;
+        min-height: 27px;
+    }
+}
+
+/* Nízký landscape telefon: řádek zůstane nízký a obsah dostane maximum výšky. */
+@media (max-height: 520px) and (orientation: landscape) {
+    .hc-homewiki-app[data-core-layout="mobile"],
+    .hc-homewiki-app[data-core-layout="tablet"] {
+        --hc-homewiki-sticky-offset: 32px;
+    }
+    .hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-bar,
+    .hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-bar {
+        min-height: 32px;
+        height: 32px;
+        padding-top: 1px;
+        padding-bottom: 1px;
+    }
+    .hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-page-navigation button,
+    .hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-page-navigation button,
+    .hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-actions,
+    .hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-actions {
+        height: 27px;
+        min-height: 27px;
+    }
+}
+
+
+/* Home Wiki 1.2.4: na mobilu/tabletu nesmí existovat samostatné tlačítko +; Nová stránka je pouze v nabídce ⋯. */
+.hc-homewiki-app[data-core-layout="mobile"] #hc-homewiki-mobile-new,
+.hc-homewiki-app[data-core-layout="tablet"] #hc-homewiki-mobile-new,
+.hc-homewiki-app[data-core-layout="mobile"] #hc-homewiki-mobile-new[hidden],
+.hc-homewiki-app[data-core-layout="tablet"] #hc-homewiki-mobile-new[hidden] {
+    display: none !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-app-menu button.danger,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-app-menu button.danger,
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-app-menu .hc-homewiki-menu-danger,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-app-menu .hc-homewiki-menu-danger {
+    color: var(--color-error);
+}
+
+
+/* Home Wiki 1.2.5: mobilní editor používá maximum plochy.
+ * Formátovací toolbar je přímo nad editorem a vodorovně se posouvá. */
+.hc-homewiki-app[data-core-layout="mobile"].hc-homewiki-edit-mode .hc-homewiki-page,
+.hc-homewiki-app[data-core-layout="tablet"].hc-homewiki-edit-mode .hc-homewiki-page {
+    padding: 2px 4px max(4px, env(safe-area-inset-bottom));
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-edit-controls,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-edit-controls {
+    position: static !important;
+    display: block;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    background: var(--color-main-background);
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-editor-toolbar-row,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-editor-toolbar-row,
+.hc-homewiki-app[data-core-layout="mobile"].hc-homewiki-mobile-toolbar-open .hc-homewiki-editor-toolbar-row,
+.hc-homewiki-app[data-core-layout="tablet"].hc-homewiki-mobile-toolbar-open .hc-homewiki-editor-toolbar-row {
+    position: static !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    z-index: auto !important;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    min-width: 0;
+    max-height: none;
+    margin: 0 0 2px;
+    padding: 2px 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--color-main-background);
+    box-shadow: none;
+    overflow: visible;
+    transform: none !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transition: none !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-editor-toolbar-row[hidden],
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-editor-toolbar-row[hidden] {
+    display: none !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-toolbar-host,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-toolbar-host {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 0;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    white-space: nowrap;
+}
+
+/* Core může toolbar obalit vlastním prvkem; na mobilu jej držíme v jednom řádku. */
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-toolbar-host > *,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-toolbar-host > *,
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-toolbar-host [role="toolbar"],
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-toolbar-host [role="toolbar"] {
+    width: max-content !important;
+    min-width: max-content !important;
+    max-width: none !important;
+    flex-wrap: nowrap !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-toolbar-host button,
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-toolbar-host select,
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-toolbar-host input,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-toolbar-host button,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-toolbar-host select,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-toolbar-host input {
+    flex: 0 0 auto !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-save-state,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-save-state {
+    flex: 0 0 auto;
+    align-self: center;
+    max-width: 54px;
+    padding: 0 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-editor-shell,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-editor-shell,
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-live-edit,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-live-edit,
+.hc-homewiki-app[data-core-layout="mobile"] #hc-homewiki-core-editor,
+.hc-homewiki-app[data-core-layout="tablet"] #hc-homewiki-core-editor {
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+}
+
+/* Dostupná výška z Core již zohledňuje hlavní Nextcloud header; odečítáme jen
+ * tenký řádek Wiki a toolbar editoru. */
+.hc-homewiki-app[data-core-layout="mobile"] #hc-homewiki-core-editor .hc-core-editor textarea,
+.hc-homewiki-app[data-core-layout="mobile"] #hc-homewiki-core-editor .hc-core-editor__preview,
+.hc-homewiki-app[data-core-layout="tablet"] #hc-homewiki-core-editor .hc-core-editor textarea,
+.hc-homewiki-app[data-core-layout="tablet"] #hc-homewiki-core-editor .hc-core-editor__preview {
+    height: max(260px, calc(var(--hc-shared-app-core-available-height, 100dvh) - 76px)) !important;
+    min-height: max(260px, calc(var(--hc-shared-app-core-available-height, 100dvh) - 76px)) !important;
+    max-height: none !important;
+    margin: 0 !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] #hc-homewiki-core-editor .hc-core-editor__toolbar,
+.hc-homewiki-app[data-core-layout="tablet"] #hc-homewiki-core-editor .hc-core-editor__toolbar {
+    position: static !important;
+    top: auto !important;
+}
+
+/* Staré plovoucí tlačítko editorového toolbaru není v tomto režimu potřeba. */
+.hc-homewiki-app[data-core-layout="mobile"] .hc-homewiki-mobile-tools-toggle,
+.hc-homewiki-app[data-core-layout="tablet"] .hc-homewiki-mobile-tools-toggle {
+    display: none !important;
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+    .hc-homewiki-app[data-core-layout="mobile"] #hc-homewiki-core-editor .hc-core-editor textarea,
+    .hc-homewiki-app[data-core-layout="mobile"] #hc-homewiki-core-editor .hc-core-editor__preview,
+    .hc-homewiki-app[data-core-layout="tablet"] #hc-homewiki-core-editor .hc-core-editor textarea,
+    .hc-homewiki-app[data-core-layout="tablet"] #hc-homewiki-core-editor .hc-core-editor__preview {
+        height: max(220px, calc(var(--hc-shared-app-core-available-height, 100dvh) - 66px)) !important;
+        min-height: max(220px, calc(var(--hc-shared-app-core-available-height, 100dvh) - 66px)) !important;
+    }
+}
+
+
+/* 1.2.6: Wiki-specific actions share the single Core editor toolbar. */
+.hc-homewiki-editor-toolbar-row {
+    display: none !important;
+}
+
+.hc-homewiki-toolbar-inline-actions {
+    display: inline-flex !important;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: max-content !important;
+    max-width: none !important;
+    overflow: visible !important;
+    white-space: nowrap;
+}
+
+.hc-homewiki-toolbar-inline-actions > *,
+.hc-homewiki-toolbar-inline-actions [role="toolbar"] {
+    display: inline-flex !important;
+    flex: 0 0 auto !important;
+    flex-wrap: nowrap !important;
+    width: auto !important;
+    min-width: max-content !important;
+    max-width: none !important;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] #hc-homewiki-core-editor .hc-core-editor__toolbar,
+.hc-homewiki-app[data-core-layout="tablet"] #hc-homewiki-core-editor .hc-core-editor__toolbar {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 4px;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    white-space: nowrap;
+}
+
+.hc-homewiki-app[data-core-layout="mobile"] #hc-homewiki-core-editor .hc-core-editor__toolbar > *,
+.hc-homewiki-app[data-core-layout="tablet"] #hc-homewiki-core-editor .hc-core-editor__toolbar > * {
+    flex: 0 0 auto !important;
 }

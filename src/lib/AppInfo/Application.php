@@ -12,7 +12,6 @@ use OCP\AppFramework\Bootstrap\IRegistrationContext;
 
 final class Application extends App implements IBootstrap {
     public const APP_ID = 'hc_homewiki';
-    public const VERSION = '1.0.0';
     public const REPOSITORY = 'https://github.com/hacesoft/Wiki';
 
     public function __construct() {

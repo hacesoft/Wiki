@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\HcHomeWiki\Service;
 
 use OCA\HcHomeWiki\AppInfo\Application;
+use OCP\App\IAppManager;
 use OCP\Config\IUserConfig;
 use OCP\Files\GenericFileException;
 use OCP\IAppConfig;
@@ -46,10 +47,11 @@ final class WikiService {
         private IGroupManager $groupManager,
         private IUserConfig $userConfig,
         private IAppConfig $appConfig,
+        private IAppManager $appManager,
         private IL10N $l10n,
         private LoggerInterface $logger,
     ) {
-        // CZ-FUNKCE: Inicializuje objekt a jeho závislosti. Vstup: `$repository`, `$storage`, `$versions`, `$userManager`, `$groupManager`, `$userConfig`, `$appConfig`, `$l10n`, `$logger`. Výstup: bez samostatné návratové hodnoty; výsledkem je inicializovaný objekt.
+        // CZ-FUNKCE: Inicializuje hlavní službu Wiki. Vstup: úložiště, repozitář, správci uživatelů/skupin/konfigurace, správce aplikací, překlady a logger. Výstup: inicializovaná služba.
     }
 
     public function listPages(string $uid): array {
@@ -365,9 +367,15 @@ final class WikiService {
         $id = $this->repository->newId();
         $slug = $this->uniqueSlug($uid, $this->normalizeSlug($input['slug'] ?? $title));
         $parentId = $this->normalizeParentId($uid, $input['parentId'] ?? null);
+        $inherit = $parentId !== null ? $this->sharingPolicyForParent($uid, $parentId) : null;
         $visibility = $this->normalizeVisibility($input['visibility'] ?? 'private');
         $allPermissions = $this->normalizeAllPermissions($input['allPermissions'] ?? [], $visibility);
         $acl = $this->normalizeAcl($input['acl'] ?? []);
+        if ($inherit !== null) {
+            $visibility = (string)$inherit['visibility'];
+            $allPermissions = $inherit['allPermissions'];
+            $acl = $inherit['acl'];
+        }
         $content = $this->normalizeContent($input['content'] ?? ('# ' . $title . "\n\n"));
         $path = $this->storage->pagePath($id, $slug);
         $now = time();
@@ -388,6 +396,7 @@ final class WikiService {
             'all_can_edit' => $allPermissions['edit'],
             'all_can_delete' => $allPermissions['delete'],
             'all_can_share' => $allPermissions['share'],
+            'inherit_sharing' => $inherit !== null,
         ];
 
         $inserted = false;
@@ -457,6 +466,12 @@ final class WikiService {
         $parentId = $canEdit
             ? $this->normalizeParentId((string)$page['owner_uid'], array_key_exists('parentId', $input) ? $input['parentId'] : $page['parent_id'], $id)
             : $page['parent_id'];
+        $moving = $canEdit && $parentId !== $page['parent_id'];
+        $inherit = $moving && $parentId !== null
+            ? $this->sharingPolicyForParent((string)$page['owner_uid'], $parentId) : null;
+        if ($inherit !== null && (!(bool)$page['permissions']['owner'] || !$canShare)) {
+            throw new \RuntimeException($this->l10n->t('Only the owner may move a subtree into inherited sharing.'), 403);
+        }
         $visibility = $canShare
             ? $this->normalizeVisibility($input['visibility'] ?? $page['visibility'])
             : (string)$page['visibility'];
@@ -471,6 +486,13 @@ final class WikiService {
         $acl = $canShare && array_key_exists('acl', $input)
             ? $this->normalizeAcl($input['acl'])
             : null;
+        if ($inherit !== null) {
+            $visibility = (string)$inherit['visibility'];
+            $allPermissions = $inherit['allPermissions'];
+            $acl = $inherit['acl'];
+        }
+        $inheritSharing = $inherit !== null || ($canShare && array_key_exists('inheritSharing', $input)
+            ? (bool)$input['inheritSharing'] : (bool)($page['inherit_sharing'] ?? false));
         $content = $canEdit && array_key_exists('content', $input)
             ? $this->normalizeContent($input['content'])
             : $this->storage->readPage((string)$page['owner_uid'], (string)$page['file_path']);
@@ -492,6 +514,7 @@ final class WikiService {
             'all_can_edit' => $allPermissions['edit'],
             'all_can_delete' => $allPermissions['delete'],
             'all_can_share' => $allPermissions['share'],
+            'inherit_sharing' => $inheritSharing,
         ];
 
         $oldPath = (string)$page['file_path'];
@@ -559,7 +582,7 @@ final class WikiService {
         }
 
         $result = $this->getPage($uid, $id);
-        if ($result !== null && $canShare && !empty($input['applyToDescendants'])) {
+        if ($result !== null && $canShare && (!empty($input['applyToDescendants']) || $inherit !== null)) {
             $result['sharePropagation'] = $this->propagateSharingToDescendants(
                 $uid,
                 $id,
@@ -571,6 +594,143 @@ final class WikiService {
         }
 
         return $result;
+    }
+
+    /** Locate the closest ancestor with an active persistent sharing policy. */
+    private function sharingPolicyForParent(string $ownerUid, string $parentId): ?array {
+        $seen = [];
+        $next = $parentId;
+        while ($next !== '') {
+            if (isset($seen[$next])) {
+                throw new \RuntimeException('Invalid wiki tree', 409);
+            }
+            $seen[$next] = true;
+            $ancestor = $this->repository->getOwned($next, $ownerUid);
+            if ($ancestor === null) {
+                throw new \RuntimeException($this->l10n->t('Parent page must belong to the same owner'), 409);
+            }
+            if ((bool)($ancestor['inherit_sharing'] ?? false)) {
+                return WikiSharingRules::fromAncestor($ancestor, $this->repository->getAcl($next));
+            }
+            $next = (string)($ancestor['parent_id'] ?? '');
+        }
+        return null;
+    }
+
+    /**
+     * Irreversible ownership transfer within Home Wiki. Only the owner may
+     * initiate it; the recipient obtains the actual Files copies and full
+     * ownership. Prior sharing grants are reset to private for safety.
+     */
+    public function transferOwnership(string $uid, string $id, array $input): array {
+        $this->assertUuid($id);
+        $targetUid = trim((string)($input['targetUid'] ?? ''));
+        $scope = (string)($input['scope'] ?? 'single');
+        $expectedRevision = (int)($input['expectedRevision'] ?? 0);
+        if ($targetUid === '' || mb_strlen($targetUid) > 64 || $this->userManager->get($targetUid) === null) {
+            throw new \InvalidArgumentException($this->l10n->t('Selected recipient does not exist'));
+        }
+        if ($targetUid === $uid) {
+            throw new \InvalidArgumentException($this->l10n->t('Choose another user'));
+        }
+        if (!in_array($scope, ['single', 'subtree'], true) || $expectedRevision < 1) {
+            throw new \InvalidArgumentException($this->l10n->t('Invalid transfer request'));
+        }
+        // Acquire both owner locks in the same order on every request.
+        $uids = [$uid, $targetUid];
+        sort($uids, SORT_STRING);
+        return $this->storage->withOwnerMutationLock($uids[0], fn(): array =>
+            $this->storage->withOwnerMutationLock($uids[1], fn(): array =>
+                $this->transferOwnershipLocked($uid, $targetUid, $id, $scope, $expectedRevision)));
+    }
+
+    private function transferOwnershipLocked(string $uid, string $targetUid, string $id, string $scope, int $expectedRevision): array {
+        $root = $this->repository->getOwned($id, $uid);
+        if ($root === null) {
+            throw new \RuntimeException($this->l10n->t('Only the page owner can transfer ownership'), 403);
+        }
+        if ((int)$root['revision'] !== $expectedRevision) {
+            throw new \RuntimeException($this->l10n->t('This page was changed by another user or browser window.'), 409);
+        }
+        $descendants = $this->repository->descendantIds($uid, $id);
+        if ($scope === 'single' && $descendants !== []) {
+            throw new \InvalidArgumentException($this->l10n->t('This page has subpages. Transfer the entire subtree.'));
+        }
+        $pageIds = [$id, ...($scope === 'subtree' ? $descendants : [])];
+        $prepared = [];
+        $reservedSlugs = [];
+        foreach ($pageIds as $pageId) {
+            $page = $this->repository->getOwned($pageId, $uid);
+            if ($page === null) throw new \RuntimeException('Wiki tree changed during transfer', 409);
+            $slug = (string)$page['slug'];
+            $base = $slug;
+            $suffix = 2;
+            while ($this->repository->slugExistsForOwner($targetUid, $slug) || isset($reservedSlugs[$slug])) {
+                $slug = mb_substr($base, 0, 235) . '-' . $suffix++;
+                if ($suffix > 9999) throw new \RuntimeException('Could not allocate recipient page slug', 409);
+            }
+            $reservedSlugs[$slug] = true;
+            $newPage = WikiSharingRules::privateForRecipient($page, $targetUid, $slug,
+                $this->storage->pagePath($pageId, $slug), $pageId === $id);
+            $prepared[] = [
+                'old' => $page, 'new' => $newPage,
+                'aliases' => $this->repository->getAliases($pageId),
+                'tags' => $this->repository->getTagsForPage($pageId),
+                'content' => $this->storage->parseRawPage($this->storage->readRawPage($uid, (string)$page['file_path']))['content'],
+            ];
+        }
+        $copiedPaths = [];
+        try {
+            foreach ($prepared as $index => $entry) {
+                $new = $entry['new'];
+                $copiedPaths[$index] = [];
+                // Track only verified-new paths; on failure never delete recipient data.
+                $this->storage->copyPageForTransfer($uid, $targetUid, $entry['old'], $new,
+                    $this->backupMetadata($new, [], (string)$entry['content']), $copiedPaths[$index]);
+            }
+            $this->repository->transactional(function () use ($uid, $targetUid, $prepared): void {
+                foreach ($prepared as $entry) {
+                    $old = $entry['old']; $new = $entry['new'];
+                    $pageId = (string)$old['id'];
+                    if (!$this->repository->transferOwnerCAS($pageId, $uid, $targetUid, (int)$old['revision'],
+                        $new['parent_id'], (string)$new['slug'], (string)$new['file_path'])) {
+                        throw new \RuntimeException($this->l10n->t('This page was changed by another user or browser window.'), 409);
+                    }
+                    $this->repository->replaceAcl($pageId, []);
+                    $this->repository->transferAliases($pageId, $targetUid, $entry['aliases'], (string)$new['slug'], (string)$new['title']);
+                    $this->repository->clearPageTagsForTransfer($pageId);
+                    foreach ($entry['tags'] as $tag) {
+                        $recipientTag = $this->ensureOwnedTag($targetUid, (string)$tag['name']);
+                        $this->repository->addTagToPage($pageId, (string)$recipientTag['id']);
+                    }
+                    $this->repository->rebuildLinks($pageId, $targetUid, (string)$entry['content']);
+                }
+            });
+        } catch (\Throwable $error) {
+            foreach (array_reverse($copiedPaths) as $paths) {
+                try {
+                    $this->storage->rollbackTransferPaths($targetUid, $paths);
+                } catch (\Throwable $cleanupError) {
+                    $this->logger->critical('Home Wiki transfer rollback left destination artifacts; manual cleanup needed.', [
+                        'exception' => $cleanupError, 'targetUid' => $targetUid,
+                    ]);
+                }
+            }
+            throw $error;
+        }
+        $cleanupFailed = [];
+        foreach ($prepared as $entry) {
+            try {
+                $this->storage->deleteTransferredSource($uid, (string)$entry['old']['id'], (string)$entry['old']['file_path']);
+            } catch (\Throwable $error) {
+                $cleanupFailed[] = (string)$entry['old']['id'];
+                $this->logger->critical('Home Wiki ownership transferred, but source Files cleanup failed.', [
+                    'exception' => $error, 'pageId' => $entry['old']['id'], 'sourceUid' => $uid,
+                ]);
+            }
+        }
+        return ['ok' => true, 'transferred' => count($prepared), 'targetUid' => $targetUid,
+            'sourceCleanupPending' => $cleanupFailed];
     }
 
     /** @return array{updated:int,skipped:int,total:int} */
@@ -602,6 +762,7 @@ final class WikiService {
                         'visibility' => $visibility,
                         'allPermissions' => $allPermissions,
                         'acl' => $visibility === 'private' ? [] : $acl,
+                        'inheritSharing' => true,
                     ]);
                     $updated++;
                     $done = true;
@@ -1307,6 +1468,14 @@ final class WikiService {
             'effectiveHomePageId' => $effectiveId,
             'effectiveSource' => $source,
             'treeDragEnabled' => $this->userConfig->getValueString($uid, Application::APP_ID, 'tree_drag_enabled', '0') === '1',
+            'treeSharingStateEnabled' => $this->userConfig->getValueString($uid, Application::APP_ID, 'tree_sharing_state_enabled', '0') === '1',
+            'pageNavigationEnabled' => $this->userConfig->getValueString($uid, Application::APP_ID, 'page_navigation_enabled', '0') === '1',
+            'editorOpenPosition' => in_array(
+                $this->userConfig->getValueString($uid, Application::APP_ID, 'editor_open_position', 'bottom'),
+                ['top', 'bottom'],
+                true,
+            ) ? $this->userConfig->getValueString($uid, Application::APP_ID, 'editor_open_position', 'bottom') : 'bottom',
+            'editorScrollSyncEnabled' => $this->userConfig->getValueString($uid, Application::APP_ID, 'editor_scroll_sync_enabled', '0') === '1',
             'sidebarSections' => $this->getSidebarSections($uid),
             'trashRetentionDays' => $this->trashRetentionDays($uid),
             'menuDensity' => $this->menuDensity($uid),
@@ -1338,6 +1507,51 @@ final class WikiService {
                 Application::APP_ID,
                 'tree_drag_enabled',
                 (bool)$input['treeDragEnabled'] ? '1' : '0',
+            );
+        }
+
+        if (array_key_exists('treeSharingStateEnabled', $input)) {
+            // CZ-FUNKCE: Uloží uživatelskou volbu, zda se mají ve stromu zobrazovat indikátory sdílení.
+            // Vstup: boolean `treeSharingStateEnabled` z Settings API. Výstup: uložená hodnota v IUserConfig; výchozí stav je vypnuto.
+            $this->userConfig->setValueString(
+                $uid,
+                Application::APP_ID,
+                'tree_sharing_state_enabled',
+                (bool)$input['treeSharingStateEnabled'] ? '1' : '0',
+            );
+        }
+
+        if (array_key_exists('pageNavigationEnabled', $input)) {
+            // CZ-FUNKCE: Uloží uživatelskou volbu zobrazení navigace Zpět / Domů / Vpřed. Vstup: boolean z Settings API. Výstup: hodnota v IUserConfig; výchozí stav je vypnuto.
+            $this->userConfig->setValueString(
+                $uid,
+                Application::APP_ID,
+                'page_navigation_enabled',
+                (bool)$input['pageNavigationEnabled'] ? '1' : '0',
+            );
+        }
+
+        if (array_key_exists('editorOpenPosition', $input)) {
+            // CZ-FUNKCE: Uloží výchozí pozici editoru při zahájení editace. Vstup: `top` nebo `bottom`. Výstup: validovaná per-user hodnota v IUserConfig.
+            $editorOpenPosition = (string)$input['editorOpenPosition'];
+            if (!in_array($editorOpenPosition, ['top', 'bottom'], true)) {
+                throw new \InvalidArgumentException($this->l10n->t('Invalid editor opening position'));
+            }
+            $this->userConfig->setValueString(
+                $uid,
+                Application::APP_ID,
+                'editor_open_position',
+                $editorOpenPosition,
+            );
+        }
+
+        if (array_key_exists('editorScrollSyncEnabled', $input)) {
+            // CZ-FUNKCE: Uloží, zda se mají zdroj a náhled při editaci posouvat společně. Vstup: boolean. Výstup: per-user hodnota v IUserConfig; výchozí stav je vypnuto.
+            $this->userConfig->setValueString(
+                $uid,
+                Application::APP_ID,
+                'editor_scroll_sync_enabled',
+                (bool)$input['editorScrollSyncEnabled'] ? '1' : '0',
             );
         }
 
@@ -1538,6 +1752,7 @@ final class WikiService {
                     'updatedAt' => (int)$page['updated_at'],
                     'revision' => max(1, (int)($page['revision'] ?? 1)),
                     'allPermissions' => $page['allPermissions'] ?? [],
+                    'inheritSharing' => (bool)($page['inherit_sharing'] ?? false),
                     'acl' => $this->repository->getAcl($id),
                     'aliases' => $this->repository->getAliases($id),
                     'contentPath' => $contentPath,
@@ -1552,7 +1767,7 @@ final class WikiService {
             $manifest = [
                 'format' => 'hc-homewiki-export',
                 'formatVersion' => 3,
-                'appVersion' => Application::VERSION,
+                'appVersion' => $this->appManager->getAppVersion(Application::APP_ID, false),
                 'exportedAt' => gmdate('c'),
                 'sourceOwner' => $uid,
                 'pageCount' => count($manifestPages),
@@ -1909,6 +2124,7 @@ final class WikiService {
                     'all_can_edit' => $allPermissions['edit'],
                     'all_can_delete' => $allPermissions['delete'],
                     'all_can_share' => $allPermissions['share'],
+                    'inherit_sharing' => (bool)($meta['inheritSharing'] ?? false),
                 ];
                 $result['available']++;
                 if (!$apply) continue;
@@ -1964,6 +2180,7 @@ final class WikiService {
                 'delete' => (string)$page['visibility'] === 'all' && (bool)($page['all_can_delete'] ?? false),
                 'share' => (string)$page['visibility'] === 'all' && (bool)($page['all_can_share'] ?? false),
             ],
+            'inheritSharing' => (bool)($page['inherit_sharing'] ?? false),
             'acl' => $acl, 'sha256' => hash('sha256', $content),
         ];
     }
@@ -2179,6 +2396,7 @@ final class WikiService {
                 'all_can_edit' => $allPermissions['edit'],
                 'all_can_delete' => $allPermissions['delete'],
                 'all_can_share' => $allPermissions['share'],
+                'inherit_sharing' => (bool)($item['inheritSharing'] ?? false),
             ];
             $aliases = [];
             foreach (is_array($item['aliases'] ?? null) ? $item['aliases'] : [] as $alias) {

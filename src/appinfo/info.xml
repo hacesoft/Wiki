@@ -34,9 +34,8 @@ Osobní a sdílená Markdown wiki přímo v Nextcloudu. Stránky, obrázky a př
 - Hacesoft Shared App Core 0.18.8 nebo novější
 
 ## Dokumentace
-https://github.com/hacesoft/Wiki</description><version>1.0.0</version><licence>AGPL-3.0-or-later</licence><author homepage="https://github.com/hacesoft">hacesoft</author><namespace>HcHomeWiki</namespace><category>office</category><category>tools</category><website>https://github.com/hacesoft/Wiki</website><bugs>https://github.com/hacesoft/Wiki/issues</bugs><repository>https://github.com/hacesoft/Wiki</repository><documentation><user>https://github.com/hacesoft/Wiki</user><admin>https://github.com/hacesoft/Wiki</admin><developer>https://github.com/hacesoft/Wiki</developer></documentation><dependencies>
+https://github.com/hacesoft/Wiki</description><version>1.2.6</version><licence>AGPL-3.0-or-later</licence><author homepage="https://github.com/hacesoft">hacesoft</author><namespace>HcHomeWiki</namespace><category>office</category><category>tools</category><website>https://github.com/hacesoft/Wiki</website><bugs>https://github.com/hacesoft/Wiki/issues</bugs><repository>https://github.com/hacesoft/Wiki</repository><documentation><user>https://github.com/hacesoft/Wiki</user><admin>https://github.com/hacesoft/Wiki</admin><developer>https://github.com/hacesoft/Wiki</developer></documentation><dependencies>
         <php min-version="8.3" max-version="8.5"/>
-        <database>mysql</database>
         <lib>zip</lib>
         <nextcloud min-version="35" max-version="35"/>
     </dependencies><background-jobs>
