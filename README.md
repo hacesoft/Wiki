@@ -4,9 +4,9 @@ Home Wiki is a Markdown-based wiki for **Nextcloud 35**. Pages, images and attac
 
 ## Screenshots
 
-![Home Wiki screenshot 01](https://raw.githubusercontent.com/hacesoft/Wiki/main/screenshots/01.png)
+![Home Wiki screenshot 01](https://raw.githubusercontent.com/hacesoft/Wiki/main/screenshot/01.png)
 
-![Home Wiki screenshot 02](https://raw.githubusercontent.com/hacesoft/Wiki/main/screenshots/02.png)
+![Home Wiki screenshot 02](https://raw.githubusercontent.com/hacesoft/Wiki/main/screenshot/02.png)
 
 [Česky](README_CZ.md)
 
